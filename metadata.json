@@ -1,0 +1,6 @@
+{
+  "name": "COINZONE | پلتفرم بازی و جوایز گیمینگ",
+  "description": "پلتفرم جوایز گیمینگ کوین‌زون: بازی‌های سرگرم‌کننده، کسب سکه و تبدیل به کلید صندوق مان‌کو Team Fortress 2 و آیتم‌های ارزشمند استیم.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
