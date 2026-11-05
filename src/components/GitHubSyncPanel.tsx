@@ -35,6 +35,9 @@ export const GitHubSyncPanel: React.FC = () => {
   const [isPrivate, setIsPrivate] = useState<boolean>(false);
   const [autoSyncEnabled, setAutoSyncEnabled] = useState<boolean>(true);
   const [commitMessage, setCommitMessage] = useState<string>('آپدیت خودکار پلتفرم کوین‌زون');
+  const [d1DatabaseId, setD1DatabaseId] = useState<string>(() => {
+    return localStorage.getItem('coinzone_d1_database_id') || '';
+  });
 
   // Repositories list from user's account
   const [userRepos, setUserRepos] = useState<GitHubRepoItem[]>([]);
@@ -190,6 +193,7 @@ export const GitHubSyncPanel: React.FC = () => {
         branch: branch.trim() || 'main',
         isPrivate,
         commitMessage: commitMessage.trim() || 'Auto-Sync from COINZONE Platform',
+        d1DatabaseId: d1DatabaseId.trim() || undefined,
       });
 
       setUploadResult(res);
@@ -540,6 +544,31 @@ git push -u origin ${branch || 'main'}`;
                   className="w-full bg-[#181a24] border border-white/10 focus:border-cyan-400 rounded-xl px-4 py-2 text-xs text-white focus:outline-none"
                 />
               </div>
+            </div>
+
+            {/* Optional Cloudflare D1 Database ID input */}
+            <div className="pt-3 border-t border-white/5 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-300 flex items-center gap-1.5">
+                  <span>شناسه پایگاه‌داده Cloudflare D1 (اختیاری)</span>
+                </label>
+                <span className="text-[11px] text-slate-400">
+                  {d1DatabaseId ? 'تنظیم شده' : 'اختیاری (برای جلوگیری از ارور ۱۰0۲۱)'}
+                </span>
+              </div>
+              <input
+                type="text"
+                placeholder="مثال: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx (اگر در کلودفلر دیتابیس D1 نساخته‌اید خالی بگذارید)"
+                value={d1DatabaseId}
+                onChange={(e) => {
+                  setD1DatabaseId(e.target.value);
+                  localStorage.setItem('coinzone_d1_database_id', e.target.value.trim());
+                }}
+                className="w-full bg-[#181a24] border border-white/10 focus:border-cyan-400 rounded-xl px-4 py-2 text-xs text-white font-mono placeholder-slate-600 focus:outline-none dir-ltr text-left"
+              />
+              <p className="text-[11px] text-slate-500">
+                اگر در کلودفلر دیتابیس D1 ساخته‌اید UUID آن را اینجا وارد کنید؛ در غیر این صورت فیلد را خالی بگذارید تا کلودفلر ورکر و فرانت‌اند را بدون خطای 10021 با موفقیت مستقر کند.
+              </p>
             </div>
           </div>
 

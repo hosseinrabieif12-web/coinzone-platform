@@ -338,6 +338,7 @@ class ApiService {
     branch?: string;
     isPrivate?: boolean;
     commitMessage?: string;
+    d1DatabaseId?: string;
   }) {
     return this.request<GitHubSyncResult>('/api/admin/github/upload', {
       method: 'POST',

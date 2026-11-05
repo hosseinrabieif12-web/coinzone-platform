@@ -1,4 +1,5 @@
 import express from 'express';
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
@@ -1669,6 +1670,38 @@ app.post('/api/admin/github/upload', requireAdmin, async (req, res) => {
     return res.status(400).json({
       error: 'لطفاً توکن دسترسی گیت‌هاب (GitHub Personal Access Token) با دسترسی repo را وارد کنید.',
     });
+  }
+
+  const d1DatabaseId = req.body.d1DatabaseId;
+  const wranglerPath = path.resolve(__dirname, 'wrangler.jsonc');
+  try {
+    const wranglerConfig: Record<string, unknown> = {
+      "$schema": "node_modules/wrangler/config-schema.json",
+      "name": "coinzone-platform",
+      "main": "worker/index.ts",
+      "compatibility_date": "2026-11-01",
+      "compatibility_flags": ["nodejs_compat"],
+      "assets": {
+        "directory": "./dist",
+        "binding": "ASSETS",
+        "not_found_handling": "single-page-application"
+      },
+      "vars": {
+        "ENVIRONMENT": "production"
+      }
+    };
+    if (d1DatabaseId && typeof d1DatabaseId === 'string' && d1DatabaseId.trim().length > 10) {
+      wranglerConfig.d1_databases = [
+        {
+          "binding": "DB",
+          "database_name": "coinzone-db",
+          "database_id": d1DatabaseId.trim()
+        }
+      ];
+    }
+    fs.writeFileSync(wranglerPath, JSON.stringify(wranglerConfig, null, 2) + '\n', 'utf-8');
+  } catch {
+    // ignore
   }
 
   try {
