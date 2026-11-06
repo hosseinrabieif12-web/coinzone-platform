@@ -18,6 +18,8 @@ export interface TelegramBotState {
   pollingActive: boolean;
   lastSyncAt: string | null;
   lastMessageReceived: string | null;
+  lastSenderId?: string;
+  lastSenderName?: string;
   lastError: string | null;
 }
 
@@ -198,22 +200,87 @@ export async function deleteTelegramWebhook(token: string) {
   return { success: true };
 }
 
-// 4. Send Message to Telegram User
-export async function sendTelegramMessage(token: string, chatId: number | string, text: string, replyMarkup?: any) {
+// 4. Setup Bot Commands and WebApp Menu Button in Telegram
+export async function setupBotCommandsAndMenu(token: string, appUrl: string) {
   try {
-    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    const cleanToken = token.trim();
+    const appWebUrl = appUrl.startsWith('http') ? appUrl : `https://${appUrl}`;
+
+    // 1. Set Chat Menu Button (creates the persistent "Play" button in chat)
+    await fetch(`https://api.telegram.org/bot${cleanToken}/setChatMenuButton`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        chat_id: chatId,
+        menu_button: {
+          type: 'web_app',
+          text: '🎮 بازی کوین‌زون',
+          web_app: { url: appWebUrl },
+        },
+      }),
+    });
+
+    // 2. Set Slash Commands List
+    await fetch(`https://api.telegram.org/bot${cleanToken}/setMyCommands`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        commands: [
+          { command: 'start', description: 'اجرا و ورود به بازی کوین‌زون' },
+          { command: 'balance', description: 'استعلام موجودی سکه و سطح' },
+          { command: 'daily', description: 'دریافت ۵۰ سکه هدیه روزانه' },
+          { command: 'admin', description: 'ورود به پنل مدیریت (ادمین)' },
+          { command: 'help', description: 'راهنمای بازی و جوایز TF2' },
+        ],
+      }),
+    });
+  } catch (err) {
+    console.warn('Failed to set Telegram menu/commands:', err);
+  }
+}
+
+// 4.1 Send Message to Telegram User with Resilient Multi-Layer Fallback
+export async function sendTelegramMessage(token: string, chatId: number | string, text: string, replyMarkup?: any) {
+  const cleanToken = token.trim();
+  const cleanChatId = chatId;
+
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${cleanToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: cleanChatId,
         text,
         parse_mode: 'HTML',
         reply_markup: replyMarkup,
       }),
     });
+
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      console.warn('Telegram sendMessage returned non-200:', err);
+      console.warn('Telegram sendMessage primary attempt error:', err);
+
+      // Fallback 1: Try without HTML formatting
+      const fallbackRes = await fetch(`https://api.telegram.org/bot${cleanToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: cleanChatId,
+          text: text.replace(/<[^>]*>/g, ''),
+          reply_markup: replyMarkup,
+        }),
+      });
+
+      if (!fallbackRes.ok) {
+        // Fallback 2: Send plain text without reply markup
+        await fetch(`https://api.telegram.org/bot${cleanToken}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: cleanChatId,
+            text: text.replace(/<[^>]*>/g, ''),
+          }),
+        });
+      }
     }
   } catch (err) {
     console.error('Failed to send telegram message:', err);
@@ -223,7 +290,7 @@ export async function sendTelegramMessage(token: string, chatId: number | string
 // 4.5 Answer Callback Query
 export async function answerTelegramCallbackQuery(token: string, callbackQueryId: string, text?: string) {
   try {
-    await fetch(`https://api.telegram.org/bot${token}/answerCallbackQuery`, {
+    await fetch(`https://api.telegram.org/bot${token.trim()}/answerCallbackQuery`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -302,6 +369,14 @@ export async function processTelegramWebhookUpdate(
   const from = msg.from;
 
   if (!chatId) return;
+
+  if (from) {
+    telegramStore.lastSenderId = String(from.id);
+    telegramStore.lastSenderName = `${from.first_name || ''} ${from.last_name || ''}`.trim() || from.username || '';
+    if (!telegramStore.adminTelegramId) {
+      telegramStore.adminTelegramId = String(from.id);
+    }
+  }
 
   telegramStore.lastMessageReceived = `${new Date().toLocaleTimeString('fa-IR')} (${text.substring(0, 15)})`;
   saveTelegramConfig(telegramStore);
@@ -460,6 +535,9 @@ export async function startTelegramPolling(
   } catch {
     // ignore
   }
+
+  // Configure bot commands list & WebApp menu button in Telegram
+  setupBotCommandsAndMenu(token, appUrl).catch(console.warn);
 
   // Polling loop
   (async () => {

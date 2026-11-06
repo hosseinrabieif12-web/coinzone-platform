@@ -1,0 +1,11 @@
+{
+  "botToken": "9056874823:AAEQ1eKyINjqF3VMp8KAk-5m9ImWAe7I7Ms",
+  "botUsername": "coinzonbot",
+  "adminTelegramId": "",
+  "webhookUrl": "https://ais-dev-ec35d7hsviz3dzuzahapbq-997644094044.europe-west2.run.app/api/telegram/webhook",
+  "webhookActive": false,
+  "pollingActive": true,
+  "lastSyncAt": null,
+  "lastMessageReceived": "۱۶:۳۷:۱۷ (/start)",
+  "lastError": null
+}
