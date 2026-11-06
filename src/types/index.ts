@@ -193,3 +193,33 @@ export interface GitHubSyncResult {
   repoNotFound?: boolean;
   createRepoUrl?: string;
 }
+
+export interface TelegramConfig {
+  botToken: string;
+  botUsername?: string;
+  adminTelegramId?: string;
+  webhookUrl?: string;
+  webhookActive: boolean;
+  pollingActive?: boolean;
+  suggestedWebhookUrl?: string;
+  publicAppUrl?: string;
+  pendingUpdateCount?: number;
+  lastMessageReceived?: string;
+  lastError?: string;
+}
+
+export interface TelegramTestResult {
+  ok: boolean;
+  bot?: {
+    id: number;
+    is_bot: boolean;
+    first_name: string;
+    username: string;
+  };
+  webhookInfo?: {
+    url: string;
+    pending_update_count: number;
+    last_error_message?: string;
+  };
+  error?: string;
+}

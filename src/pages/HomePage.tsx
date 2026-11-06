@@ -143,18 +143,6 @@ export const HomePage: React.FC<HomePageProps> = ({ setActiveTab }) => {
             >
               <span>مشاهده فروشگاه کلید TF2</span>
             </button>
-
-            {!user && (
-              <button
-                onClick={() => {
-                  sound.playClick();
-                  setShowAuthModal(true);
-                }}
-                className="text-xs text-purple-300 hover:text-white underline font-semibold mr-2 cursor-pointer"
-              >
-                ورود یا ثبت‌نام (۵۰ سکه هدیه)
-              </button>
-            )}
           </div>
         </div>
       </div>

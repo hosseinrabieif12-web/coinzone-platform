@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 
 export const ProfilePage: React.FC = () => {
-  const { user, wallet, refreshUserData, setShowAuthModal } = useAuth();
+  const { user, wallet, refreshUserData, setShowAdminPinModal, lockAdmin } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [activeTab, setActiveTab] = useState<'TRANSACTIONS' | 'ACHIEVEMENTS' | 'ORDERS'>('TRANSACTIONS');
@@ -59,11 +59,11 @@ export const ProfilePage: React.FC = () => {
         <button
           onClick={() => {
             sound.playClick();
-            setShowAuthModal(true);
+            setShowAdminPinModal(true);
           }}
           className="py-2.5 px-6 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl shadow-lg transition-all cursor-pointer"
         >
-          ورود به حساب کاربری
+          ورود به عنوان مدیر سیستم
         </button>
       </div>
     );
@@ -183,6 +183,27 @@ export const ProfilePage: React.FC = () => {
             <div className="text-lg font-black text-slate-300 font-mono mt-0.5">
               {wallet ? wallet.spentTotal.toLocaleString('fa-IR') : '۰'}
             </div>
+          </div>
+          <div>
+            {user.role === 'admin' ? (
+              <button
+                onClick={lockAdmin}
+                className="px-3 py-2 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap"
+                title="تغییر به کاربر عادی"
+              >
+                <Shield className="w-3.5 h-3.5 text-amber-400" />
+                <span>خروج از ادمین</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowAdminPinModal(true)}
+                className="px-3 py-2 bg-white/[0.04] hover:bg-amber-500/20 border border-white/10 hover:border-amber-500/40 text-slate-400 hover:text-amber-300 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap"
+                title="ورود با پین‌کد مدیریت (پیش‌فرض: ۱۲۳)"
+              >
+                <Shield className="w-3.5 h-3.5 text-amber-400" />
+                <span>کلید ادمین</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

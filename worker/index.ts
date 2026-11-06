@@ -95,7 +95,47 @@ export default {
         });
       }
 
-      // 2. Auth Endpoints
+      // 2. Auth Endpoints: Session & Admin unlock
+      if (path === '/api/auth/session') {
+        return json({
+          user: {
+            id: 'usr_gamer',
+            username: 'Gamer_COINZONE',
+            email: 'player@coinzone.gg',
+            role: 'user',
+            avatar: 'avatar_1',
+            level: 1,
+            xp: 50,
+            isAdmin: false,
+          },
+          wallet: { balance: 1500, earnedTotal: 1500, spentTotal: 0, reservedBalance: 0 },
+          adminUnlocked: false,
+          sessionToken: 'cf_sess_' + Math.random().toString(36).substring(2),
+        });
+      }
+
+      if (path === '/api/auth/admin-unlock' && request.method === 'POST') {
+        const body = await request.json().catch(() => ({})) as { pin?: string };
+        const pin = String(body.pin || '').trim();
+        const isValid = pin === '123' || pin === 'admin' || pin === 'coinzone_master_key_2026';
+        if (!isValid) {
+          return error('رمز یا کلید امنیتی مدیریت اشتباه است. (رمز پیش‌فرض: 123)', 401);
+        }
+        return json({
+          success: true,
+          message: 'دسترسی مدیریت با موفقیت تایید شد.',
+          adminUnlocked: true,
+          user: {
+            id: 'admin_master',
+            username: 'مدیر کل کوین‌زون',
+            role: 'admin',
+            isAdmin: true,
+            avatar: 'avatar_5',
+            level: 99,
+          },
+        });
+      }
+
       if (path === '/api/auth/me') {
         if (!env.DB) {
           return json({
@@ -108,7 +148,7 @@ export default {
               level: 1,
               xp: 120,
             },
-            wallet: { balance: 100, earnedTotal: 100, spentTotal: 0, reservedBalance: 0 },
+            wallet: { balance: 1500, earnedTotal: 1500, spentTotal: 0, reservedBalance: 0 },
             d1Notice: 'D1 database not connected yet.',
           });
         }
@@ -131,6 +171,20 @@ export default {
 
         const wallet = await env.DB.prepare('SELECT * FROM wallets WHERE user_id = ?').bind(session.user_id).first();
         return json({ user, wallet });
+      }
+
+      // Telegram Webhook on Cloudflare Worker
+      if (path === '/api/telegram/webhook' && request.method === 'POST') {
+        const update = await request.json().catch(() => ({})) as any;
+        const msg = update?.message;
+        const chatId = msg?.chat?.id;
+        const text = (msg?.text || '').trim();
+
+        if (chatId && text) {
+          // Cloudflare worker acknowledge
+          return json({ ok: true, processed: true, echo: text });
+        }
+        return json({ ok: true });
       }
 
       // 3. Products List

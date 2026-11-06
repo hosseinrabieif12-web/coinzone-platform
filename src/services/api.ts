@@ -345,6 +345,81 @@ class ApiService {
       body: JSON.stringify(options),
     });
   }
+
+  // Seamless Session & Admin Unlock
+  public async initSession(options: { deviceId?: string; telegramUser?: any; adminKey?: string }) {
+    const res = await this.request<{ token: string; user: User; wallet: Wallet }>('/api/auth/session', {
+      method: 'POST',
+      body: JSON.stringify(options),
+    });
+    this.setToken(res.token);
+    return res;
+  }
+
+  public async adminUnlock(key: string) {
+    const res = await this.request<{ success: boolean; token?: string; user?: User; wallet?: Wallet }>('/api/auth/admin-unlock', {
+      method: 'POST',
+      body: JSON.stringify({ key }),
+    });
+    if (res.token) {
+      this.setToken(res.token);
+    }
+    return res;
+  }
+
+  public async adminLock() {
+    return this.request<{ success: boolean; user?: User }>('/api/auth/admin-lock', {
+      method: 'POST',
+    });
+  }
+
+  // Telegram Bot & Webhook APIs
+  public async getTelegramConfig() {
+    return this.request<import('../types').TelegramConfig>('/api/telegram/config');
+  }
+
+  public async saveTelegramConfig(config: { botToken?: string; adminTelegramId?: string }) {
+    return this.request<{ success: boolean; config: import('../types').TelegramConfig }>('/api/telegram/config', {
+      method: 'POST',
+      body: JSON.stringify(config),
+    });
+  }
+
+  public async getTelegramInfo(token?: string) {
+    const query = token ? `?token=${encodeURIComponent(token)}` : '';
+    return this.request<import('../types').TelegramTestResult>(`/api/telegram/info${query}`);
+  }
+
+  public async setTelegramWebhook(options: { botToken?: string; adminTelegramId?: string; webhookUrl?: string }) {
+    return this.request<{ success: boolean; message: string; webhookUrl: string; botUsername?: string }>(
+      '/api/telegram/webhook/set',
+      {
+        method: 'POST',
+        body: JSON.stringify(options),
+      }
+    );
+  }
+
+  public async deleteTelegramWebhook(botToken?: string) {
+    return this.request<{ success: boolean }>('/api/telegram/webhook/delete', {
+      method: 'POST',
+      body: JSON.stringify({ botToken }),
+    });
+  }
+
+  public async toggleTelegramPolling(active: boolean, token?: string) {
+    return this.request<{ success: boolean; pollingActive: boolean; message: string }>('/api/telegram/polling/toggle', {
+      method: 'POST',
+      body: JSON.stringify({ active, token }),
+    });
+  }
+
+  public async sendTelegramTestMessage(options: { botToken?: string; chatId: string }) {
+    return this.request<{ success: boolean; message: string }>('/api/telegram/test-message', {
+      method: 'POST',
+      body: JSON.stringify(options),
+    });
+  }
 }
 
 export const api = new ApiService();

@@ -18,11 +18,13 @@ import {
   AlertTriangle,
   Lock,
   Github,
+  Bot,
 } from 'lucide-react';
 import { GitHubSyncPanel } from '../components/GitHubSyncPanel';
+import { TelegramBotPanel } from '../components/TelegramBotPanel';
 
 export const AdminPage: React.FC = () => {
-  const { user, login } = useAuth();
+  const { user, unlockAdmin } = useAuth();
   const [stats, setStats] = useState<{
     totalUsers: number;
     totalCoinsCirculation: number;
@@ -32,7 +34,7 @@ export const AdminPage: React.FC = () => {
     tf2KeyPrice: number;
   } | null>(null);
 
-  const [activeTab, setActiveTab] = useState<'ORDERS' | 'USERS' | 'INVENTORY' | 'LOGS' | 'GITHUB'>('ORDERS');
+  const [activeTab, setActiveTab] = useState<'ORDERS' | 'USERS' | 'INVENTORY' | 'LOGS' | 'GITHUB' | 'TELEGRAM'>('ORDERS');
   const [orders, setOrders] = useState<Order[]>([]);
   const [usersList, setUsersList] = useState<(User & { wallet?: Wallet })[]>([]);
   const [logs, setLogs] = useState<AdminLog[]>([]);
@@ -99,11 +101,11 @@ export const AdminPage: React.FC = () => {
         <button
           onClick={async () => {
             sound.playClick();
-            await login('admin', '123');
+            await unlockAdmin('123');
           }}
           className="py-3 px-6 bg-gradient-to-r from-amber-500 to-yellow-500 text-black font-black text-xs rounded-xl shadow-lg transition-all cursor-pointer"
         >
-          ورود سریع به عنوان مدیر سیستم (admin / 123)
+          ورود سریع به عنوان مدیر سیستم (پین‌کد: ۱۲۳)
         </button>
       </div>
     );
@@ -314,6 +316,21 @@ export const AdminPage: React.FC = () => {
         >
           <Github className="w-4 h-4" />
           <span>آپلود خودکار به گیت‌هاب</span>
+        </button>
+
+        <button
+          onClick={() => {
+            sound.playClick();
+            setActiveTab('TELEGRAM');
+          }}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
+            activeTab === 'TELEGRAM'
+              ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-md'
+              : 'text-cyan-300 hover:text-white hover:bg-cyan-950/30 border border-cyan-500/20'
+          }`}
+        >
+          <Bot className="w-4 h-4" />
+          <span>بات تلگرام و وب‌هوک</span>
         </button>
       </div>
 
@@ -546,6 +563,9 @@ export const AdminPage: React.FC = () => {
 
       {/* TAB 5: GITHUB AUTO-SYNC */}
       {activeTab === 'GITHUB' && <GitHubSyncPanel />}
+
+      {/* TAB 6: TELEGRAM BOT & WEBHOOK */}
+      {activeTab === 'TELEGRAM' && <TelegramBotPanel />}
 
       {/* Coin Adjustment Modal */}
       {adjustTargetUser && (

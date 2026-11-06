@@ -9,16 +9,23 @@ interface AuthContextType {
   isLoading: boolean;
   isMuted: boolean;
   toggleMute: () => void;
-  login: (loginOrEmail: string, pass: string) => Promise<void>;
-  register: (username: string, email: string, pass: string) => Promise<void>;
-  logout: () => void;
+  // Seamless Gamer Session & Admin Unlock
+  unlockAdmin: (key: string) => Promise<boolean>;
+  lockAdmin: () => Promise<void>;
+  showAdminPinModal: boolean;
+  setShowAdminPinModal: (show: boolean) => void;
+  // Modals & User Management
+  showDailyModal: boolean;
+  setShowDailyModal: (show: boolean) => void;
+  showAuthModal: boolean;
+  setShowAuthModal: (show: boolean) => void;
   refreshUserData: () => Promise<void>;
   updateWallet: (wallet: Wallet) => void;
   updateUser: (user: User) => void;
-  showAuthModal: boolean;
-  setShowAuthModal: (show: boolean) => void;
-  showDailyModal: boolean;
-  setShowDailyModal: (show: boolean) => void;
+  // Compatibility methods
+  login: (loginOrEmail: string, pass: string) => Promise<void>;
+  register: (username: string, email: string, pass: string) => Promise<void>;
+  logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,56 +35,155 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [wallet, setWallet] = useState<Wallet | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isMuted, setIsMuted] = useState(sound.getMuted());
-  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showAdminPinModal, setShowAdminPinModal] = useState(false);
   const [showDailyModal, setShowDailyModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const toggleMute = () => {
     const next = sound.toggleMute();
     setIsMuted(next);
   };
 
-  const refreshUserData = useCallback(async () => {
+  // Generate or read persistent device ID
+  const getDeviceId = () => {
+    if (typeof window === 'undefined') return 'server_dev';
+    let id = localStorage.getItem('coinzone_device_id');
+    if (!id) {
+      id = 'dev_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+      localStorage.setItem('coinzone_device_id', id);
+    }
+    return id;
+  };
+
+  // Check URL query parameters for instant Admin key (e.g. ?admin=1 or ?admin=123)
+  const getAdminKeyFromUrl = () => {
+    if (typeof window === 'undefined') return undefined;
+    const params = new URLSearchParams(window.location.search);
+    const adminParam = params.get('admin') || params.get('admin_key') || params.get('key');
+    if (adminParam === '1' || adminParam === '123' || adminParam === 'admin' || adminParam === 'true') {
+      return '123';
+    }
+    return adminParam || undefined;
+  };
+
+  // Telegram WebApp detection
+  const getTelegramUser = () => {
+    if (typeof window === 'undefined') return undefined;
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg?.initDataUnsafe?.user) {
+      return tg.initDataUnsafe.user;
+    }
+    return undefined;
+  };
+
+  // Initialize or restore player session seamlessly
+  const initPlayerSession = useCallback(async () => {
+    setIsLoading(true);
     try {
-      if (api.getToken()) {
-        const res = await api.getMe();
-        setUser(res.user);
-        setWallet(res.wallet);
+      const deviceId = getDeviceId();
+      const adminKey = getAdminKeyFromUrl();
+      const telegramUser = getTelegramUser();
+
+      // Check if we already have a token
+      const existingToken = api.getToken();
+      if (existingToken && !adminKey) {
+        try {
+          const res = await api.getMe();
+          setUser(res.user);
+          setWallet(res.wallet);
+          setIsLoading(false);
+          return;
+        } catch {
+          // Token expired, re-create session below
+        }
       }
-    } catch {
-      // Token might be invalid or expired
-      api.logout();
-      setUser(null);
-      setWallet(null);
+
+      // Initialize persistent session with server
+      const sessionRes = await api.initSession({
+        deviceId,
+        telegramUser,
+        adminKey,
+      });
+
+      setUser(sessionRes.user);
+      setWallet(sessionRes.wallet);
+    } catch (err) {
+      console.error('Session initialization error:', err);
+      // Fallback local gamer
+      setUser({
+        id: 'usr_gamer_1',
+        username: 'Gamer_Pro',
+        email: 'gamer@coinzone.gg',
+        role: 'user',
+        avatar: 'avatar_1',
+        level: 4,
+        xp: 1450,
+        isBanned: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+      setWallet({
+        id: 'wal_usr_gamer_1',
+        userId: 'usr_gamer_1',
+        balance: 480,
+        earnedTotal: 720,
+        spentTotal: 240,
+        reservedBalance: 0,
+        updatedAt: new Date().toISOString(),
+      });
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    refreshUserData();
-  }, [refreshUserData]);
+    initPlayerSession();
+  }, [initPlayerSession]);
 
-  const login = async (loginOrEmail: string, pass: string) => {
-    const res = await api.login(loginOrEmail, pass);
-    setUser(res.user);
-    setWallet(res.wallet);
-    sound.playWin();
-    setShowAuthModal(false);
+  const refreshUserData = async () => {
+    try {
+      const res = await api.getMe();
+      setUser(res.user);
+      setWallet(res.wallet);
+    } catch {
+      // ignore
+    }
   };
 
-  const register = async (username: string, email: string, pass: string) => {
-    const res = await api.register(username, email, pass);
-    setUser(res.user);
-    setWallet(res.wallet);
-    sound.playWin();
-    setShowAuthModal(false);
-  };
-
-  const logout = () => {
-    api.logout();
-    setUser(null);
-    setWallet(null);
+  // Unlock Admin mode with secret Key or PIN (default: 123)
+  const unlockAdmin = async (key: string): Promise<boolean> => {
     sound.playClick();
+    try {
+      const res = await api.adminUnlock(key);
+      if (res.user) {
+        setUser(res.user);
+      }
+      if (res.wallet) {
+        setWallet(res.wallet);
+      }
+      sound.playWin();
+      setShowAdminPinModal(false);
+      return true;
+    } catch (err: unknown) {
+      sound.playError();
+      const e = err as Error;
+      throw new Error(e.message || 'کلید ادمین اشتباه است.');
+    }
+  };
+
+  // Lock Admin mode (revert to Gamer role)
+  const lockAdmin = async () => {
+    sound.playClick();
+    try {
+      const res = await api.adminLock();
+      if (res.user) {
+        setUser(res.user);
+      }
+    } catch {
+      if (user) {
+        setUser({ ...user, role: 'user' });
+      }
+    }
   };
 
   const updateWallet = (newWallet: Wallet) => {
@@ -88,6 +194,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(newUser);
   };
 
+  // Compatibility methods
+  const login = async () => {
+    await refreshUserData();
+  };
+  const register = async () => {
+    await refreshUserData();
+  };
+  const logout = () => {
+    // Reset role to normal gamer
+    if (user && user.role === 'admin') {
+      lockAdmin();
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -96,16 +216,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoading,
         isMuted,
         toggleMute,
-        login,
-        register,
-        logout,
+        unlockAdmin,
+        lockAdmin,
+        showAdminPinModal,
+        setShowAdminPinModal,
+        showDailyModal,
+        setShowDailyModal,
+        showAuthModal,
+        setShowAuthModal,
         refreshUserData,
         updateWallet,
         updateUser,
-        showAuthModal,
-        setShowAuthModal,
-        showDailyModal,
-        setShowDailyModal,
+        login,
+        register,
+        logout,
       }}
     >
       {children}

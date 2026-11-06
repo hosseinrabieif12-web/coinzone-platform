@@ -5,6 +5,17 @@ import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import crypto from 'crypto';
 import { githubStore, testGitHubAuth, getUserRepositories, syncProjectToGitHub } from './src/server/githubSync.ts';
+import {
+  telegramStore,
+  getTelegramBotInfo,
+  setTelegramWebhook,
+  deleteTelegramWebhook,
+  processTelegramWebhookUpdate,
+  startTelegramPolling,
+  stopTelegramPolling,
+  sendTelegramMessage,
+  saveTelegramConfig,
+} from './src/server/telegramBot.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -507,7 +518,160 @@ function getAuthenticatedUser(req: express.Request): UserRecord | null {
 // API ROUTES
 // -------------------------------------------------------------
 
-// 1. AUTH
+// 0. SEAMLESS PLAYER SESSION (No login or registration required)
+app.post('/api/auth/session', (req, res) => {
+  const { deviceId, telegramUser, adminKey } = req.body;
+
+  let userId = '';
+  let username = '';
+  let avatar = 'avatar_1';
+  let email = '';
+  let isAdmin = false;
+
+  // Check if adminKey is provided (e.g. '123')
+  if (adminKey && (adminKey === '123' || adminKey === 'admin123' || adminKey === 'admin')) {
+    isAdmin = true;
+  }
+
+  // Check if Telegram user matches Admin Telegram ID
+  if (telegramUser?.id) {
+    const tgIdStr = String(telegramUser.id);
+    userId = `tg_${tgIdStr}`;
+    username = telegramUser.username || telegramUser.first_name || `Gamer_${tgIdStr.slice(-4)}`;
+    email = `${tgIdStr}@telegram.coinzone.gg`;
+    if (telegramStore.adminTelegramId && tgIdStr === telegramStore.adminTelegramId.trim()) {
+      isAdmin = true;
+    }
+  } else if (deviceId) {
+    userId = `dev_${deviceId}`;
+    username = `Gamer_${String(deviceId).slice(0, 5)}`;
+    email = `${String(deviceId).slice(0, 8)}@device.coinzone.gg`;
+  } else {
+    userId = `usr_gamer_1`;
+    username = `Gamer_Pro`;
+    email = `gamer@coinzone.gg`;
+  }
+
+  // If user already exists in DB, retrieve them
+  let user = DB.users.get(userId);
+  if (!user) {
+    user = {
+      id: userId,
+      username,
+      email,
+      passwordHash: hashPassword('123'),
+      role: isAdmin ? 'admin' : 'user',
+      avatar,
+      level: 1,
+      xp: 0,
+      isBanned: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    DB.users.set(userId, user);
+
+    // Initial Wallet with 50 coins welcome gift
+    const newWallet: WalletRecord = {
+      id: `wal_${userId}`,
+      userId,
+      balance: 50,
+      earnedTotal: 50,
+      spentTotal: 0,
+      reservedBalance: 0,
+      updatedAt: new Date().toISOString(),
+    };
+    DB.wallets.set(userId, newWallet);
+
+    DB.transactions.push({
+      id: `tx_${Date.now()}`,
+      userId,
+      walletId: newWallet.id,
+      type: 'DAILY_REWARD',
+      amount: 50,
+      balanceAfter: 50,
+      status: 'COMPLETED',
+      description: 'هدیه ورود به پلتفرم گیمینگ کوین‌زون',
+      createdAt: new Date().toISOString(),
+    });
+  } else {
+    if (isAdmin && user.role !== 'admin') {
+      user.role = 'admin';
+      user.updatedAt = new Date().toISOString();
+    }
+  }
+
+  let wallet = DB.wallets.get(user.id);
+  if (!wallet) {
+    wallet = {
+      id: `wal_${user.id}`,
+      userId: user.id,
+      balance: 50,
+      earnedTotal: 50,
+      spentTotal: 0,
+      reservedBalance: 0,
+      updatedAt: new Date().toISOString(),
+    };
+    DB.wallets.set(user.id, wallet);
+  }
+
+  const token = `token_${user.id}_${crypto.randomBytes(16).toString('hex')}`;
+  DB.sessions.set(token, { userId: user.id, expiresAt: Date.now() + 90 * 86400000 });
+
+  return res.json({
+    token,
+    user: {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      avatar: user.avatar,
+      level: user.level,
+      xp: user.xp,
+      isBanned: user.isBanned,
+    },
+    wallet,
+  });
+});
+
+// Admin Unlock endpoint (Secret Key / PIN)
+app.post('/api/auth/admin-unlock', (req, res) => {
+  const { key } = req.body;
+  if (!key) {
+    return res.status(400).json({ error: 'لطفاً کلید ادمین را وارد کنید.' });
+  }
+
+  const validKey = key === '123' || key === 'admin123' || key === 'admin';
+  if (!validKey) {
+    return res.status(403).json({ error: 'کلید یا پین‌کد مدیریت اشتباه است (پیش‌فرض: 123).' });
+  }
+
+  const currentUser = getAuthenticatedUser(req);
+  if (currentUser) {
+    currentUser.role = 'admin';
+    currentUser.updatedAt = new Date().toISOString();
+    const wallet = DB.wallets.get(currentUser.id);
+    return res.json({ success: true, user: currentUser, wallet });
+  }
+
+  // Fallback to primary admin user
+  const adminUser = DB.users.get('usr_admin_1')!;
+  const token = `token_admin_${Date.now()}_${crypto.randomBytes(16).toString('hex')}`;
+  DB.sessions.set(token, { userId: adminUser.id, expiresAt: Date.now() + 30 * 86400000 });
+  const wallet = DB.wallets.get(adminUser.id);
+  return res.json({ success: true, token, user: adminUser, wallet });
+});
+
+// Admin Lock endpoint
+app.post('/api/auth/admin-lock', (req, res) => {
+  const currentUser = getAuthenticatedUser(req);
+  if (currentUser) {
+    currentUser.role = 'user';
+    currentUser.updatedAt = new Date().toISOString();
+  }
+  return res.json({ success: true, user: currentUser });
+});
+
+// 1. AUTH (Legacy endpoints kept for compatibility)
 app.post('/api/auth/register', (req, res) => {
   const { username, email, password } = req.body;
   if (!username || !email || !password) {
@@ -640,9 +804,9 @@ app.post('/api/auth/login', (req, res) => {
 });
 
 app.get('/api/auth/me', (req, res) => {
-  const user = getAuthenticatedUser(req);
+  let user = getAuthenticatedUser(req);
   if (!user) {
-    return res.status(401).json({ error: 'نیاز به احراز هویت است.' });
+    user = DB.users.get('usr_gamer_1') || Array.from(DB.users.values())[0];
   }
   const wallet = DB.wallets.get(user.id);
   return res.json({ user, wallet });
@@ -1742,8 +1906,195 @@ app.post('/api/admin/github/upload', requireAdmin, async (req, res) => {
   }
 });
 
+// 14. TELEGRAM BOT & WEBHOOK APIS
+const getTelegramUserCoins = async (tgId: string) => {
+  const u = DB.users.get(`tg_${tgId}`);
+  if (!u) return null;
+  const w = DB.wallets.get(u.id);
+  return { coins: w ? w.balance : 0, level: u.level };
+};
+
+// 14. TELEGRAM BOT & WEBHOOK APIS
+app.get('/api/telegram/config', (req, res) => {
+  const publicBase =
+    process.env.APP_URL ||
+    (req.get('x-forwarded-proto') === 'https'
+      ? `https://${req.get('x-forwarded-host') || req.get('host')}`
+      : 'https://ais-dev-ec35d7hsviz3dzuzahapbq-997644094044.europe-west2.run.app');
+  const suggestedWebhookUrl = `${publicBase.replace(/\/$/, '')}/api/telegram/webhook`;
+
+  return res.json({
+    botToken: telegramStore.botToken ? `${telegramStore.botToken.substring(0, 10)}...` : '',
+    botUsername: telegramStore.botUsername,
+    adminTelegramId: telegramStore.adminTelegramId,
+    webhookUrl: telegramStore.webhookUrl,
+    suggestedWebhookUrl,
+    publicAppUrl: publicBase,
+    webhookActive: telegramStore.webhookActive,
+    pollingActive: telegramStore.pollingActive,
+    lastSyncAt: telegramStore.lastSyncAt,
+    lastMessageReceived: telegramStore.lastMessageReceived,
+    lastError: telegramStore.lastError,
+  });
+});
+
+app.post('/api/telegram/config', async (req, res) => {
+  const { botToken, adminTelegramId } = req.body;
+  if (botToken !== undefined) telegramStore.botToken = botToken.trim();
+  if (adminTelegramId !== undefined) telegramStore.adminTelegramId = String(adminTelegramId).trim();
+  saveTelegramConfig(telegramStore);
+
+  const publicBase =
+    process.env.APP_URL ||
+    (req.get('x-forwarded-proto') === 'https'
+      ? `https://${req.get('x-forwarded-host') || req.get('host')}`
+      : 'https://ais-dev-ec35d7hsviz3dzuzahapbq-997644094044.europe-west2.run.app');
+
+  if (telegramStore.botToken) {
+    try {
+      const info = await getTelegramBotInfo(telegramStore.botToken);
+      telegramStore.botUsername = info.bot.username;
+    } catch {
+      // ignore
+    }
+    // Auto-start real-time polling so messages are answered immediately!
+    startTelegramPolling(publicBase, getTelegramUserCoins);
+  }
+
+  return res.json({ success: true, config: telegramStore });
+});
+
+app.get('/api/telegram/info', async (req, res) => {
+  const token = (req.query.token as string) || telegramStore.botToken;
+  if (!token) {
+    return res.status(400).json({ error: 'توکن بات تلگرام وارد نشده است.' });
+  }
+  try {
+    const result = await getTelegramBotInfo(token);
+    return res.json(result);
+  } catch (err: unknown) {
+    const e = err as Error;
+    return res.status(400).json({ error: e.message || 'خطا در دریافت مشخصات بات تلگرام' });
+  }
+});
+
+app.post('/api/telegram/polling/toggle', async (req, res) => {
+  const publicBase =
+    process.env.APP_URL ||
+    (req.get('x-forwarded-proto') === 'https'
+      ? `https://${req.get('x-forwarded-host') || req.get('host')}`
+      : 'https://ais-dev-ec35d7hsviz3dzuzahapbq-997644094044.europe-west2.run.app');
+
+  const { active, token } = req.body;
+  if (token) telegramStore.botToken = token.trim();
+
+  if (active) {
+    if (!telegramStore.botToken) {
+      return res.status(400).json({ error: 'توکن بات تلگرام تنظیم نشده است.' });
+    }
+    startTelegramPolling(publicBase, getTelegramUserCoins);
+    return res.json({ success: true, pollingActive: true, message: 'سیستم پاسخ‌گویی زنده (Long-Polling) فعال شد.' });
+  } else {
+    stopTelegramPolling();
+    return res.json({ success: true, pollingActive: false, message: 'سیستم پاسخ‌گویی متوقف شد.' });
+  }
+});
+
+app.post('/api/telegram/test-message', async (req, res) => {
+  const token = req.body.botToken || telegramStore.botToken;
+  const chatId = req.body.chatId || telegramStore.adminTelegramId;
+
+  if (!token) {
+    return res.status(400).json({ error: 'توکن بات تلگرام وارد نشده است.' });
+  }
+  if (!chatId) {
+    return res.status(400).json({ error: 'شناسه چت تلگرام (Chat ID) وارد نشده است.' });
+  }
+
+  try {
+    await sendTelegramMessage(
+      token,
+      chatId,
+      '🎮 <b>تست موفقیت‌آمیز ارتباط با ربات COINZONE!</b>\n\n' +
+        '⚡ ربات تلگرام هم‌اکنون به سرور بازی متصل است و آماده پردازش دستورات و اجرای مینی‌اپ می‌باشد.'
+    );
+    return res.json({ success: true, message: 'پیام تست با موفقیت به تلگرام شما ارسال شد.' });
+  } catch (err: unknown) {
+    const e = err as Error;
+    return res.status(500).json({ error: e.message || 'خطا در ارسال پیام تست تلگرام' });
+  }
+});
+
+app.post('/api/telegram/webhook/set', async (req, res) => {
+  const token = req.body.botToken || telegramStore.botToken;
+  const adminTelegramId = req.body.adminTelegramId || telegramStore.adminTelegramId;
+  if (adminTelegramId) telegramStore.adminTelegramId = String(adminTelegramId).trim();
+
+  if (!token) {
+    return res.status(400).json({ error: 'لطفاً توکن بات تلگرام (Bot Token) را وارد کنید.' });
+  }
+
+  // Derive target public HTTPS webhook URL
+  const publicBase =
+    process.env.APP_URL ||
+    (req.get('x-forwarded-proto') === 'https'
+      ? `https://${req.get('x-forwarded-host') || req.get('host')}`
+      : 'https://ais-dev-ec35d7hsviz3dzuzahapbq-997644094044.europe-west2.run.app');
+  const defaultWebhookUrl = `${publicBase.replace(/\/$/, '')}/api/telegram/webhook`;
+
+  let webhookUrl = (req.body.webhookUrl || '').trim();
+  if (!webhookUrl || !webhookUrl.startsWith('https://')) {
+    webhookUrl = defaultWebhookUrl;
+  }
+
+  try {
+    const result = await setTelegramWebhook(token, webhookUrl);
+    return res.json(result);
+  } catch (err: unknown) {
+    const e = err as Error;
+    return res.status(400).json({ error: e.message || 'خطا در تنظیم خودکار وب‌هوک تلگرام' });
+  }
+});
+
+app.post('/api/telegram/webhook/delete', async (req, res) => {
+  const token = req.body.botToken || telegramStore.botToken;
+  if (!token) {
+    return res.status(400).json({ error: 'توکن بات تلگرام وارد نشده است.' });
+  }
+  try {
+    const result = await deleteTelegramWebhook(token);
+    return res.json(result);
+  } catch (err: unknown) {
+    const e = err as Error;
+    return res.status(400).json({ error: e.message || 'خطا در حذف وب‌هوک' });
+  }
+});
+
+app.post('/api/telegram/webhook', async (req, res) => {
+  try {
+    const host = req.get('x-forwarded-host') || req.get('host') || '127.0.0.1:3000';
+    const proto = req.get('x-forwarded-proto') || 'https';
+    const appUrl = `${proto}://${host}`;
+
+    // Process update in background
+    processTelegramWebhookUpdate(req.body, appUrl, getTelegramUserCoins).catch(console.error);
+
+    return res.json({ ok: true });
+  } catch {
+    return res.json({ ok: true });
+  }
+});
+
 // Vite Middleware for Full-Stack Dev Server
 async function startServer() {
+  const publicBase =
+    process.env.APP_URL || 'https://ais-dev-ec35d7hsviz3dzuzahapbq-997644094044.europe-west2.run.app';
+
+  // Automatically start telegram polling if token is already configured
+  if (telegramStore.botToken) {
+    startTelegramPolling(publicBase, getTelegramUserCoins);
+  }
+
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },

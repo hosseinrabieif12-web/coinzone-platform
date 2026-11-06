@@ -373,6 +373,23 @@ git push -u origin ${branch || 'main'}`;
                 </button>
               </div>
 
+              {/* Token type helper badge */}
+              {tokenInput.trim().startsWith('github_pat_') && (
+                <div className="p-2.5 bg-amber-950/30 border border-amber-500/40 rounded-xl text-[11px] text-amber-300 flex items-start gap-2 animate-fadeIn">
+                  <AlertCircle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <div className="leading-relaxed">
+                    <strong>توکن نوع Fine-Grained شناسایی شد:</strong> به دلیل سیاست‌های امنیتی گیت‌هاب، این نوع توکن نمی‌تواند به طور خودکار مخزن جدید بسازد. لطفاً در مرحله ۲ با دکمه «ساخت مخزن در GitHub» مخزن را بسازید، یا از توکن نوع Classic استفاده کنید.
+                  </div>
+                </div>
+              )}
+
+              {tokenInput.trim().startsWith('ghp_') && (
+                <div className="p-2.5 bg-emerald-950/20 border border-emerald-500/30 rounded-xl text-[11px] text-emerald-300 flex items-center gap-2 animate-fadeIn">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>توکن نوع Classic استاندارد (با دسترسی کامل به مخازن)</span>
+                </div>
+              )}
+
               {testResult && (
                 <div className="p-3 bg-emerald-950/30 border border-emerald-500/40 rounded-xl text-xs text-emerald-300 flex items-center justify-between gap-2 animate-fadeIn">
                   <div className="flex items-center gap-2">
@@ -650,31 +667,50 @@ git push -u origin ${branch || 'main'}`;
               </div>
 
               {/* Action buttons to immediately fix the error */}
-              <div className="p-4 bg-black/40 border border-rose-500/30 rounded-xl space-y-2 mt-1">
-                <div className="font-bold text-amber-300 flex items-center gap-1.5">
+              <div className="p-4 bg-black/60 border border-amber-500/40 rounded-xl space-y-3 mt-1 shadow-lg">
+                <div className="font-bold text-amber-300 text-sm flex items-center gap-1.5">
                   <Sparkles className="w-4 h-4 text-amber-400" />
-                  <span>حل سریع این خطا در ۲ مرحله ساده:</span>
+                  <span>حل فوری و قطعی این خطا در ۲ قدم:</span>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3 pt-1">
+                <div className="text-xs text-slate-300 space-y-1 leading-relaxed">
+                  <p>
+                    علت: توکن شما از نوع Fine-Grained است یا مخزن <code className="text-amber-300 font-mono font-bold">{repoName}</code> هنوز در اکانت گیت‌هاب شما ساخته نشده است.
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-1">
                   <a
                     href={errorCreateRepoUrl || createRepoPreFilledUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="px-4 py-2.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-black rounded-xl flex items-center gap-2 transition-all shadow"
+                    className="px-4 py-3 bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-black font-black rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95 text-xs text-center"
                   >
-                    <span>۱. ساخت مخزن {repoName} در گیت‌هاب (۱ کلیک)</span>
-                    <ExternalLink className="w-4 h-4" />
+                    <span>۱. ساخت مخزن «{repoName}» در گیت‌هاب (۱ کلیک)</span>
+                    <ExternalLink className="w-4 h-4 shrink-0" />
                   </a>
 
                   <button
                     type="button"
                     onClick={handleUploadNow}
-                    className="px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl flex items-center gap-2 transition-all cursor-pointer shadow"
+                    className="px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black rounded-xl flex items-center justify-center gap-2 transition-all cursor-pointer shadow-lg active:scale-95 text-xs text-center"
                   >
-                    <RefreshCw className="w-4 h-4" />
-                    <span>۲. تلاش مجدد برای آپلود</span>
+                    <RefreshCw className="w-4 h-4 shrink-0" />
+                    <span>۲. تلاش مجدد برای آپلود و پوش فوری</span>
                   </button>
+                </div>
+
+                <div className="pt-2 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400">
+                  <span>روش جایگزین: استفاده از توکن Classic با دسترسی کامل</span>
+                  <a
+                    href={generateClassicTokenUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-cyan-400 hover:text-cyan-300 underline font-bold flex items-center gap-1"
+                  >
+                    <span>ساخت توکن Classic (تیک‌های خودکار)</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
                 </div>
               </div>
             </div>

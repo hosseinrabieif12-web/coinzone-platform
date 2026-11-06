@@ -180,12 +180,20 @@ export async function syncProjectToGitHub(options: {
     if (!createRepoRes.ok) {
       const err = await createRepoRes.json().catch(() => ({}));
       const errMsg = err.message || createRepoRes.statusText;
+      const isResourceAccessErr =
+        errMsg.includes('Resource not accessible') ||
+        createRepoRes.status === 403 ||
+        createRepoRes.status === 404;
 
-      if (errMsg.includes('Resource not accessible') || createRepoRes.status === 403 || createRepoRes.status === 404) {
+      if (isResourceAccessErr) {
+        const createRepoUrl = `https://github.com/new?name=${encodeURIComponent(repo)}&description=${encodeURIComponent('COINZONE+Gaming+Platform')}&public=true`;
+        const createTokenUrl = 'https://github.com/settings/tokens/new?description=COINZONE+Upload&scopes=repo,workflow';
         throw new Error(
-          `مخزن "${repo}" در گیت‌هاب یافت نشد و توکن دسترسی شما اجازه ساخت مستقیم مخزن جدید را ندارد (${errMsg}).\n` +
-          `✅ راه حل سریع: ابتدا وارد لینک https://github.com/new شوید و یک مخزن با نام "${repo}" بسازید، سپس مجدداً روی دکمه «آپلود و پوش فوری» کلیک کنید.\n` +
-          `(یا در صفحه توکن‌های گیت‌هاب از نوع Tokens (classic) با تیک گزینه repo استفاده کنید).`
+          `مخزن «${repo}» در حساب گیت‌هاب شما یافت نشد و توکن فعلی شما دسترسی ساخت مستقیم مخزن جدید را ندارد (محدودیت گیت‌هاب: Resource not accessible by personal access token).\n\n` +
+          `✅ حل بسیار سریع و قطعی (در ۱۰ ثانیه):\n` +
+          `۱. روی لینک زیر کلیک کرده و در صفحه گیت‌هاب دکمه سبز Create repository را بزنید تا مخزن ساخته شود:\n${createRepoUrl}\n\n` +
+          `۲. سپس برگردید و دوباره دکمه «آپلود و پوش فوری» را بزنید تا تمام فایل‌ها فوراً کامیت و پوش شوند!\n\n` +
+          `💡 نکته: توکن‌های Fine-Grained به دلیل سیاست امنیتی گیت‌هاب امکان ساخت مخزن جدید با API را ندارند؛ ساخت دستی مخزن یا استفاده از توکن Classic (${createTokenUrl}) این مشکل را برای همیشه حل می‌کند.`
         );
       }
       throw new Error(`خطا در ایجاد مخزن در گیت‌هاب: ${errMsg}`);
