@@ -14,6 +14,7 @@ export interface TelegramBotState {
   botUsername: string;
   adminTelegramId: string;
   webhookUrl: string;
+  publicAppUrl: string;
   webhookActive: boolean;
   pollingActive: boolean;
   lastSyncAt: string | null;
@@ -43,6 +44,7 @@ export function loadTelegramConfig(): TelegramBotState {
     botUsername: '',
     adminTelegramId: process.env.TELEGRAM_ADMIN_ID || '',
     webhookUrl: '',
+    publicAppUrl: 'https://coinzone-platform.0oir5e7kv-3anzbuidmyoek.workers.dev',
     webhookActive: false,
     pollingActive: false,
     lastSyncAt: null,
@@ -313,7 +315,11 @@ export async function processTelegramWebhookUpdate(
   const token = telegramStore.botToken;
   if (!token) return;
 
-  const appWebUrl = appUrl.startsWith('http') ? appUrl : `https://${appUrl}`;
+  const appWebUrl = (
+    telegramStore.publicAppUrl ||
+    appUrl ||
+    'https://coinzone-platform.0oir5e7kv-3anzbuidmyoek.workers.dev'
+  ).trim();
 
   // Handle Callback Query (Button clicks)
   if (update.callback_query) {
@@ -386,7 +392,6 @@ export async function processTelegramWebhookUpdate(
     telegramUserId &&
     telegramStore.adminTelegramId &&
     telegramUserId === telegramStore.adminTelegramId.trim();
-
   // Command: /start
   if (text.startsWith('/start')) {
     const userName = from?.first_name || 'گیمر عزیز';
@@ -404,8 +409,12 @@ export async function processTelegramWebhookUpdate(
       inline_keyboard: [
         [
           {
-            text: '🚀 ورود به بازی و استخراج سکه (Play Now)',
+            text: '🚀 ورود به بازی (Mini App تلگرام)',
             web_app: { url: appWebUrl },
+          },
+          {
+            text: '🌐 باز کردن در مرورگر',
+            url: appWebUrl,
           },
         ],
         [

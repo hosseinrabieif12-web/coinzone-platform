@@ -1929,7 +1929,7 @@ app.get('/api/telegram/config', (req, res) => {
     adminTelegramId: telegramStore.adminTelegramId,
     webhookUrl: telegramStore.webhookUrl,
     suggestedWebhookUrl,
-    publicAppUrl: publicBase,
+    publicAppUrl: telegramStore.publicAppUrl || 'https://coinzone-platform.0oir5e7kv-3anzbuidmyoek.workers.dev',
     webhookActive: telegramStore.webhookActive,
     pollingActive: telegramStore.pollingActive,
     lastSyncAt: telegramStore.lastSyncAt,
@@ -1939,9 +1939,10 @@ app.get('/api/telegram/config', (req, res) => {
 });
 
 app.post('/api/telegram/config', async (req, res) => {
-  const { botToken, adminTelegramId } = req.body;
+  const { botToken, adminTelegramId, publicAppUrl } = req.body;
   if (botToken !== undefined) telegramStore.botToken = botToken.trim();
   if (adminTelegramId !== undefined) telegramStore.adminTelegramId = String(adminTelegramId).trim();
+  if (publicAppUrl !== undefined) telegramStore.publicAppUrl = String(publicAppUrl).trim();
   saveTelegramConfig(telegramStore);
 
   const publicBase =
