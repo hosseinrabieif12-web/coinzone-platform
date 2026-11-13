@@ -63,6 +63,7 @@ export async function collectProjectFiles(rootDir = process.cwd()): Promise<Coll
 
       const absPath = path.join(dir, entry.name);
       const relPath = relBase ? `${relBase}/${entry.name}` : entry.name;
+      if (relPath === 'public/assets/aistudio') continue;
 
       if (entry.isDirectory()) {
         if (relBase === '' && !INCLUDED_DIRS.has(entry.name)) continue;

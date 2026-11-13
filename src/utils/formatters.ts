@@ -2,14 +2,21 @@ import type { ChartAnalysisReport, CombinedDecisionType } from '../types.ts';
 
 export async function readApiJson<T = any>(res: Response, fallbackError: string): Promise<T> {
   const text = await res.text();
+  if (!text || !text.trim()) {
+    throw new Error(
+      res.ok
+        ? `پاسخ خالی از سرور دریافت شد (کد وضعیت ${res.status}). ممکن است اتصال اینترنت/VPN قطع شده یا زمان پردازش تمام شده باشد.`
+        : `${fallbackError} (کد وضعیت ${res.status})`
+    );
+  }
   let parsed: any = null;
   try {
-    parsed = text ? JSON.parse(text) : null;
+    parsed = JSON.parse(text);
   } catch {
     const looksLikeHtml = text.trim().toLowerCase().startsWith('<!doctype') || text.trim().toLowerCase().startsWith('<html');
     throw new Error(
       looksLikeHtml
-        ? 'سرویس API سرور پاسخ JSON نداد (در کلودفلر مطمئن شوید پوشه functions و خروجی dist از طریق Connect to Git دیپلوی شده‌اند).'
+        ? 'سرویس API سرور پاسخ JSON نداد (در کلودفلر مطمئن شوید worker.ts و dist با npx wrangler deploy مستقر شده‌اند).'
         : res.ok
           ? 'پاسخ سرور ساختار معتبر JSON نداشت.'
           : `${fallbackError} (کد وضعیت ${res.status})`

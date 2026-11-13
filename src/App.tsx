@@ -178,7 +178,13 @@ export default function App() {
         !report.technicalAnalysis ||
         !report.riskManagement
       ) {
-        throw new Error('ساختار گزارش دریافتی از سرور کامل نبود. لطفاً دوباره تلاش کنید.');
+        const keysInfo =
+          report && typeof report === 'object'
+            ? Object.keys(report).slice(0, 6).join(', ') || 'empty-object'
+            : typeof report;
+        throw new Error(
+          `ساختار گزارش دریافتی از سرور کامل نبود (${keysInfo}). لطفاً دوباره تلاش کنید.`
+        );
       }
       setCurrentReport(report);
 

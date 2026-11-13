@@ -197,7 +197,7 @@ Provide a concise, factual, source-attributed briefing with dates and verificati
         model: 'gemini-4-hydrogen',
         contents: prompt,
         config: {
-          thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
+          thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
           tools: [{ googleSearch: {} }],
         },
       })
@@ -276,7 +276,21 @@ export async function analyzeChartWithAI(params: {
   }
 
   // Step 1: Identify symbol & timeframe honestly from screenshot(s) + hints
-  const quickId = await identifyChartQuickly(ai, frames, userHints);
+  // Skip extra round-trip when user already provided symbol & timeframe hints
+  const quickId: QuickChartId =
+    userHints.symbol?.trim() && userHints.timeframe?.trim()
+      ? {
+          symbol: userHints.symbol.trim().toUpperCase(),
+          coinName: userHints.symbol.trim().toUpperCase(),
+          exchange: 'USER_PROVIDED',
+          detectedTimeframe: userHints.timeframe.trim(),
+          currentPriceText: userHints.currentPrice?.trim() || 'UNKNOWN',
+          symbolClear: true,
+          timeframeClear: true,
+          priceClear: Boolean(userHints.currentPrice?.trim()),
+        }
+      : await identifyChartQuickly(ai, frames, userHints);
+
   const effectiveSymbolRaw =
     userHints.symbol?.trim() || (quickId.symbol !== 'UNKNOWN' ? quickId.symbol : 'BTC');
   const { base: normalizedBase } = normalizeCryptoTicker(effectiveSymbolRaw);
@@ -307,17 +321,19 @@ export async function analyzeChartWithAI(params: {
     },
   ])).flat();
 
-  const liveDataContext = JSON.stringify(
-    {
-      quickIdentification: quickId,
-      userHints,
-      globalMarket,
-      tickerSnapshot,
-      rawHeadlines: rawNews.items.slice(0, 20),
-    },
-    null,
-    2
-  );
+  const liveDataContext = JSON.stringify({
+    quickIdentification: quickId,
+    userHints,
+    globalMarket,
+    tickerSnapshot,
+    rawHeadlines: rawNews.items.slice(0, 12).map((h) => ({
+      title: h.title,
+      source: h.source,
+      url: h.url,
+      publishedAt: h.publishedAt,
+      body: h.body ? h.body.slice(0, 140) : undefined,
+    })),
+  });
 
   const systemInstruction = `You are CRYPTO SCOPE AI, an institutional-grade, brutally honest cryptocurrency technical, fundamental, and macro analyst writing entirely in professional Persian (فارسی).
 Technical indicator abbreviations (RSI, MACD, EMA 20, EMA 50, EMA 100, EMA 200, Bollinger Bands, R:R, BTC.D, ETF, CPI, FOMC) may remain in English alongside Persian terminology.
@@ -360,7 +376,7 @@ Generate the complete, structured Persian trading decision report following the 
     },
     config: {
       systemInstruction,
-      thinkingConfig: { thinkingLevel: ThinkingLevel.HIGH },
+      thinkingConfig: { thinkingLevel: ThinkingLevel.MEDIUM },
       responseMimeType: 'application/json',
       responseSchema: {
         type: Type.OBJECT,
