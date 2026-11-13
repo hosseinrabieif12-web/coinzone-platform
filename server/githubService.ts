@@ -40,6 +40,7 @@ const INCLUDED_ROOT_FILES = new Set([
   'tsconfig.json',
   'vite.config.ts',
   'wrangler.toml',
+  'worker.ts',
   'metadata.json',
   '.env.example',
   '.gitignore',
@@ -88,15 +89,15 @@ export async function collectProjectFiles(rootDir = process.cwd()): Promise<Coll
 
 پلتفرم هوشمند تحلیل تکنیکال چارت ارزهای دیجیتال، تحلیل اخبار لحظه‌ای و ارزیابی شرایط کلان بازار (فارسی / RTL).
 
-## استقرار روی Cloudflare Pages
-1. این مخزن را در **Cloudflare Dashboard > Workers & Pages > Create > Pages > Connect to Git** متصل کنید.
+## استقرار آنلاین روی Cloudflare Workers / Pages
+1. این مخزن را در **Cloudflare Dashboard > Workers & Pages > Create > Import a repository** متصل کنید.
 2. تنظیمات Build:
    - **Build command:** \`npm run build\`
-   - **Build output directory:** \`dist\`
-3. در بخش **Settings > Environment variables** متغیرهای زیر را اضافه کنید:
+   - **Deploy command (در حالت Workers):** \`npx wrangler deploy\`
+3. در بخش **Settings > Variables and Secrets** متغیرهای زیر را اضافه کنید:
    - \`GEMINI_API_KEY\` (الزامی، به عنوان Secret)
    - \`CRYPTOPANIC_API_KEY\` (اختیاری)
-4. مسیرهای API به صورت خودکار توسط Cloudflare Pages Functions در پوشه \`functions/api/[[path]].ts\` اجرا می‌شوند.
+4. فایل \`worker.ts\` و \`wrangler.toml\` به صورت خودکار تمام مسیرهای \`/api/*\` را به صورت آنلاین روی شبکه Edge کلودفلر اجرا می‌کنند.
 `;
     results.push({
       repoPath: 'README.md',

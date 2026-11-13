@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { TopBar, type AppTab } from './components/TopBar.tsx';
 import { readApiJson } from './utils/formatters.ts';
+import { fetchPublicMarketFallback } from './utils/marketFallback.ts';
 import { MarketStrip } from './components/MarketStrip.tsx';
 import { ChartUploadWorkspace } from './components/ChartUploadWorkspace.tsx';
 import { AnalysisReportView } from './components/AnalysisReportView.tsx';
@@ -86,11 +87,17 @@ export default function App() {
       const res = await fetch(`/api/market/global${force ? '?refresh=1' : ''}`);
       const data = await readApiJson<GlobalMarketData>(res, 'خطا در دریافت داده‌های بازار');
       if (!data || !data.btc || !data.eth || !data.global || !data.fearAndGreed) {
-        throw new Error('پاسخ سرویس بازار ناقص است؛ در حال استفاده از حالت آفلاین.');
+        throw new Error('پاسخ دریافتی از سرویس بازار ناقص است.');
       }
       setGlobalMarket(data);
     } catch (err) {
-      setMarketError(err instanceof Error ? err.message : 'خطا در اتصال به سرور');
+      const fallbackData = await fetchPublicMarketFallback().catch(() => null);
+      if (fallbackData) {
+        setGlobalMarket(fallbackData);
+        setMarketError(null);
+      } else {
+        setMarketError(err instanceof Error ? err.message : 'خطا در اتصال به سرور');
+      }
     } finally {
       setMarketLoading(false);
     }

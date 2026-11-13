@@ -615,9 +615,9 @@ export const GitHubDeployView: React.FC = () => {
           <div className="space-y-3 text-xs">
             {[
               { label: 'Build command', val: 'npm run build' },
-              { label: 'Build output directory', val: 'dist' },
+              { label: 'Deploy command (Workers)', val: 'npx wrangler deploy' },
               { label: 'Environment variable (Secret)', val: 'GEMINI_API_KEY' },
-              { label: 'Edge API Functions (خودکار)', val: 'functions/api/[[path]].ts' },
+              { label: 'Worker & Edge API Entry', val: 'worker.ts' },
             ].map((row) => (
               <div
                 key={row.label}
@@ -646,8 +646,8 @@ export const GitHubDeployView: React.FC = () => {
           </div>
 
           <div className="p-3.5 rounded-lg bg-[#070b17] border border-slate-800/80 text-xs text-slate-400 leading-relaxed">
-            فایل <span className="font-mono-num text-slate-200">wrangler.toml</span> نیز با پرچم{' '}
-            <span className="font-mono-num text-slate-200">nodejs_compat</span> در ریشه پروژه قرار داده شده تا اجرای توابع تحلیل تصویر و اخبار روی شبکه Edge کلودفلر بدون نیاز به سرور جداگانه انجام شود.
+            فایل‌های <span className="font-mono-num text-slate-200">wrangler.toml</span> و{' '}
+            <span className="font-mono-num text-slate-200">worker.ts</span> به گونه‌ای تنظیم شده‌اند که هم رابط کاربری (<span className="font-mono-num text-slate-200">dist</span>) و هم تمام سرویس‌های آنلاین (<span className="font-mono-num text-slate-200">/api/*</span>) به صورت مستقیم روی <span className="font-mono-num text-slate-200">workers.dev</span> اجرا شوند.
           </div>
 
           <a

@@ -80,7 +80,7 @@ export const TopBar: React.FC<TopBarProps> = ({
       </div>
 
       {/* Mobile Navigation Row */}
-      <div className="md:hidden border-t border-slate-800/70 px-3 py-1.5 flex items-center justify-around gap-1 bg-[#080d1a]">
+      <div className="md:hidden border-t border-slate-800/70 px-3 py-1.5 flex items-center gap-1 overflow-x-auto bg-[#080d1a]">
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
           return (

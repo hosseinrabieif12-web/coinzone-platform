@@ -95,6 +95,7 @@ export async function fetchGlobalMarketData(forceRefresh = false): Promise<Globa
     binanceEthRes,
     binanceFundingRes,
     binanceOiRes,
+    ccPriceRes,
   ] = await Promise.allSettled([
     fetchJsonWithTimeout<any>('https://api.coingecko.com/api/v3/global'),
     fetchJsonWithTimeout<any[]>(
@@ -105,6 +106,7 @@ export async function fetchGlobalMarketData(forceRefresh = false): Promise<Globa
     fetchJsonWithTimeout<any>('https://data-api.binance.vision/api/v3/ticker/24hr?symbol=ETHUSDT'),
     fetchJsonWithTimeout<any>('https://fapi.binance.com/fapi/v1/premiumIndex?symbol=BTCUSDT'),
     fetchJsonWithTimeout<any>('https://fapi.binance.com/fapi/v1/openInterest?symbol=BTCUSDT'),
+    fetchJsonWithTimeout<any>('https://min-api.cryptocompare.com/data/pricemultifull?fsyms=BTC,ETH&tsyms=USD'),
   ]);
 
   // Parse CoinGecko Global + Coins
@@ -171,11 +173,14 @@ export async function fetchGlobalMarketData(forceRefresh = false): Promise<Globa
     lastUpdated: timestamp,
   });
 
-  // Parse Binance BTC & ETH
+  // Parse Binance BTC & ETH + CryptoCompare fallback
   const btcBinance = binanceBtcRes.status === 'fulfilled' ? binanceBtcRes.value : null;
   const ethBinance = binanceEthRes.status === 'fulfilled' ? binanceEthRes.value : null;
   const btcFunding = binanceFundingRes.status === 'fulfilled' ? binanceFundingRes.value : null;
   const btcOi = binanceOiRes.status === 'fulfilled' ? binanceOiRes.value : null;
+  const ccRaw = ccPriceRes.status === 'fulfilled' ? ccPriceRes.value?.RAW : null;
+  const ccBtc = ccRaw?.BTC?.USD || null;
+  const ccEth = ccRaw?.ETH?.USD || null;
 
   sources.push({
     name: 'Binance Public API',
@@ -189,7 +194,18 @@ export async function fetchGlobalMarketData(forceRefresh = false): Promise<Globa
     lastUpdated: timestamp,
   });
 
-  const btcPrice = toFiniteNum(btcBinance?.lastPrice) ?? toFiniteNum(cgBtc?.current_price);
+  if (ccBtc || ccEth) {
+    sources.push({
+      name: 'CryptoCompare Market API',
+      status: 'online',
+      lastUpdated: timestamp,
+    });
+  }
+
+  const btcPrice =
+    toFiniteNum(btcBinance?.lastPrice) ??
+    toFiniteNum(cgBtc?.current_price) ??
+    toFiniteNum(ccBtc?.PRICE);
   const btcFundingRateRaw = toFiniteNum(btcFunding?.lastFundingRate);
   const btcOiRaw = toFiniteNum(btcOi?.openInterest);
   const btcData: GlobalMarketData['btc'] =
@@ -197,14 +213,22 @@ export async function fetchGlobalMarketData(forceRefresh = false): Promise<Globa
       ? {
           available: true,
           priceUsd: btcPrice,
-          change24h: btcBinance
-            ? toFiniteNum(btcBinance.priceChangePercent)
-            : toFiniteNum(cgBtc?.price_change_percentage_24h),
-          high24h: btcBinance ? toFiniteNum(btcBinance.highPrice) : toFiniteNum(cgBtc?.high_24h),
-          low24h: btcBinance ? toFiniteNum(btcBinance.lowPrice) : toFiniteNum(cgBtc?.low_24h),
-          volume24hUsd: btcBinance
-            ? toFiniteNum(btcBinance.quoteVolume)
-            : toFiniteNum(cgBtc?.total_volume),
+          change24h:
+            toFiniteNum(btcBinance?.priceChangePercent) ??
+            toFiniteNum(cgBtc?.price_change_percentage_24h) ??
+            toFiniteNum(ccBtc?.CHANGEPCT24HOUR),
+          high24h:
+            toFiniteNum(btcBinance?.highPrice) ??
+            toFiniteNum(cgBtc?.high_24h) ??
+            toFiniteNum(ccBtc?.HIGH24HOUR),
+          low24h:
+            toFiniteNum(btcBinance?.lowPrice) ??
+            toFiniteNum(cgBtc?.low_24h) ??
+            toFiniteNum(ccBtc?.LOW24HOUR),
+          volume24hUsd:
+            toFiniteNum(btcBinance?.quoteVolume) ??
+            toFiniteNum(cgBtc?.total_volume) ??
+            toFiniteNum(ccBtc?.TOTALVOLUME24HTO),
           fundingRate: btcFundingRateRaw !== undefined ? btcFundingRateRaw * 100 : undefined,
           openInterestUsd: btcOiRaw !== undefined ? btcOiRaw * btcPrice : undefined,
         }
@@ -213,20 +237,31 @@ export async function fetchGlobalMarketData(forceRefresh = false): Promise<Globa
           error: 'قیمت لحظه‌ای بیت‌کوین در دسترس نیست',
         };
 
-  const ethPrice = toFiniteNum(ethBinance?.lastPrice) ?? toFiniteNum(cgEth?.current_price);
+  const ethPrice =
+    toFiniteNum(ethBinance?.lastPrice) ??
+    toFiniteNum(cgEth?.current_price) ??
+    toFiniteNum(ccEth?.PRICE);
   const ethData: GlobalMarketData['eth'] =
     ethPrice !== undefined
       ? {
           available: true,
           priceUsd: ethPrice,
-          change24h: ethBinance
-            ? toFiniteNum(ethBinance.priceChangePercent)
-            : toFiniteNum(cgEth?.price_change_percentage_24h),
-          high24h: ethBinance ? toFiniteNum(ethBinance.highPrice) : toFiniteNum(cgEth?.high_24h),
-          low24h: ethBinance ? toFiniteNum(ethBinance.lowPrice) : toFiniteNum(cgEth?.low_24h),
-          volume24hUsd: ethBinance
-            ? toFiniteNum(ethBinance.quoteVolume)
-            : toFiniteNum(cgEth?.total_volume),
+          change24h:
+            toFiniteNum(ethBinance?.priceChangePercent) ??
+            toFiniteNum(cgEth?.price_change_percentage_24h) ??
+            toFiniteNum(ccEth?.CHANGEPCT24HOUR),
+          high24h:
+            toFiniteNum(ethBinance?.highPrice) ??
+            toFiniteNum(cgEth?.high_24h) ??
+            toFiniteNum(ccEth?.HIGH24HOUR),
+          low24h:
+            toFiniteNum(ethBinance?.lowPrice) ??
+            toFiniteNum(cgEth?.low_24h) ??
+            toFiniteNum(ccEth?.LOW24HOUR),
+          volume24hUsd:
+            toFiniteNum(ethBinance?.quoteVolume) ??
+            toFiniteNum(cgEth?.total_volume) ??
+            toFiniteNum(ccEth?.TOTALVOLUME24HTO),
         }
       : {
           available: false,
