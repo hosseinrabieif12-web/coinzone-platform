@@ -45,17 +45,32 @@ export const AnalysisReportView: React.FC<AnalysisReportViewProps> = ({
   const [clarifyTf, setClarifyTf] = useState('');
   const [clarifyPrice, setClarifyPrice] = useState('');
 
-  const {
-    identification: id,
-    decisionEngine: dec,
-    riskManagement: risk,
-    technicalAnalysis: tech,
-    multiTimeframe,
-    newsAndFundamental: news,
-    marketConditions: mkt,
-  } = report;
+  if (!report || !report.identification || !report.decisionEngine) {
+    return (
+      <div className="bg-rose-500/10 border border-rose-500/35 rounded-xl p-5 text-xs text-rose-300">
+        ساختار گزارش تحلیلی کامل نیست. لطفاً تحلیل را مجدداً اجرا کنید.
+      </div>
+    );
+  }
 
-  const decisionStyle = getDecisionStyle(dec.finalDecision);
+  const id = report.identification;
+  const dec = report.decisionEngine;
+  const breakdown = dec.weightedBreakdown || {
+    technicalWeight: 45,
+    technicalScore: 0,
+    newsWeight: 30,
+    newsScore: 0,
+    marketWeight: 25,
+    marketScore: 0,
+    combinedScore: 0,
+  };
+  const risk = report.riskManagement || ({} as ChartAnalysisReport['riskManagement']);
+  const tech = report.technicalAnalysis || ({} as ChartAnalysisReport['technicalAnalysis']);
+  const multiTimeframe = report.multiTimeframe || [];
+  const news = report.newsAndFundamental || ({ impactScore: 0, items: [] } as unknown as ChartAnalysisReport['newsAndFundamental']);
+  const mkt = report.marketConditions || ({} as ChartAnalysisReport['marketConditions']);
+
+  const decisionStyle = getDecisionStyle(dec?.finalDecision || 'NO TRADE');
 
   const handleDownloadMarkdown = () => {
     const md = buildMarkdownReport(report);
@@ -281,8 +296,8 @@ export const AnalysisReportView: React.FC<AnalysisReportViewProps> = ({
                 وزن‌دهی سه ماژول مستقل تحلیل
               </h3>
               <span className="text-xs font-mono-num text-blue-400 font-semibold">
-                امتیاز ترکیبی: {dec.weightedBreakdown.combinedScore > 0 ? '+' : ''}
-                {dec.weightedBreakdown.combinedScore}
+                امتیاز ترکیبی: {breakdown.combinedScore > 0 ? '+' : ''}
+                {breakdown.combinedScore}
               </span>
             </div>
 
@@ -295,23 +310,23 @@ export const AnalysisReportView: React.FC<AnalysisReportViewProps> = ({
                   </span>
                   <span
                     className={`font-mono-num font-semibold ${
-                      dec.weightedBreakdown.technicalScore >= 0
+                      breakdown.technicalScore >= 0
                         ? 'text-emerald-400'
                         : 'text-rose-400'
                     }`}
                   >
-                    {dec.weightedBreakdown.technicalScore > 0 ? '+' : ''}
-                    {dec.weightedBreakdown.technicalScore}
+                    {breakdown.technicalScore > 0 ? '+' : ''}
+                    {breakdown.technicalScore}
                   </span>
                 </div>
                 <div className="h-2 rounded-full bg-slate-800 overflow-hidden">
                   <div
                     className={`h-full rounded-full ${
-                      dec.weightedBreakdown.technicalScore >= 0
+                      breakdown.technicalScore >= 0
                         ? 'bg-emerald-500'
                         : 'bg-rose-500'
                     }`}
-                    style={{ width: scoreToBarWidth(dec.weightedBreakdown.technicalScore) }}
+                    style={{ width: scoreToBarWidth(breakdown.technicalScore) }}
                   />
                 </div>
               </div>
@@ -324,23 +339,23 @@ export const AnalysisReportView: React.FC<AnalysisReportViewProps> = ({
                   </span>
                   <span
                     className={`font-mono-num font-semibold ${
-                      dec.weightedBreakdown.newsScore >= 0
+                      breakdown.newsScore >= 0
                         ? 'text-emerald-400'
                         : 'text-rose-400'
                     }`}
                   >
-                    {dec.weightedBreakdown.newsScore > 0 ? '+' : ''}
-                    {dec.weightedBreakdown.newsScore}
+                    {breakdown.newsScore > 0 ? '+' : ''}
+                    {breakdown.newsScore}
                   </span>
                 </div>
                 <div className="h-2 rounded-full bg-slate-800 overflow-hidden">
                   <div
                     className={`h-full rounded-full ${
-                      dec.weightedBreakdown.newsScore >= 0
+                      breakdown.newsScore >= 0
                         ? 'bg-blue-500'
                         : 'bg-rose-500'
                     }`}
-                    style={{ width: scoreToBarWidth(dec.weightedBreakdown.newsScore) }}
+                    style={{ width: scoreToBarWidth(breakdown.newsScore) }}
                   />
                 </div>
               </div>
@@ -353,23 +368,23 @@ export const AnalysisReportView: React.FC<AnalysisReportViewProps> = ({
                   </span>
                   <span
                     className={`font-mono-num font-semibold ${
-                      dec.weightedBreakdown.marketScore >= 0
+                      breakdown.marketScore >= 0
                         ? 'text-emerald-400'
                         : 'text-rose-400'
                     }`}
                   >
-                    {dec.weightedBreakdown.marketScore > 0 ? '+' : ''}
-                    {dec.weightedBreakdown.marketScore}
+                    {breakdown.marketScore > 0 ? '+' : ''}
+                    {breakdown.marketScore}
                   </span>
                 </div>
                 <div className="h-2 rounded-full bg-slate-800 overflow-hidden">
                   <div
                     className={`h-full rounded-full ${
-                      dec.weightedBreakdown.marketScore >= 0
+                      breakdown.marketScore >= 0
                         ? 'bg-purple-500'
                         : 'bg-rose-500'
                     }`}
-                    style={{ width: scoreToBarWidth(dec.weightedBreakdown.marketScore) }}
+                    style={{ width: scoreToBarWidth(breakdown.marketScore) }}
                   />
                 </div>
               </div>

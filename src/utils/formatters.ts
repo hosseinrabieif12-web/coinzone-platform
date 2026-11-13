@@ -175,42 +175,48 @@ export async function processImageFile(file: File): Promise<{
 }
 
 export function buildMarkdownReport(report: ChartAnalysisReport): string {
-  const { identification: id, decisionEngine: dec, riskManagement: risk, technicalAnalysis: tech, newsAndFundamental: news, marketConditions: mkt } = report;
-  return `# گزارش تحلیلی CRYPTO SCOPE AI — ${id.symbol} (${id.coinNameFa})
+  const id = report?.identification || ({} as ChartAnalysisReport['identification']);
+  const dec = report?.decisionEngine || ({} as ChartAnalysisReport['decisionEngine']);
+  const wb = dec?.weightedBreakdown || { combinedScore: 0, technicalScore: 0, newsScore: 0, marketScore: 0 };
+  const risk = report?.riskManagement || ({} as ChartAnalysisReport['riskManagement']);
+  const tech = report?.technicalAnalysis || ({} as ChartAnalysisReport['technicalAnalysis']);
+  const news = report?.newsAndFundamental || ({} as ChartAnalysisReport['newsAndFundamental']);
+  const mkt = report?.marketConditions || ({} as ChartAnalysisReport['marketConditions']);
+  return `# گزارش تحلیلی CRYPTO SCOPE AI — ${id.symbol || 'UNKNOWN'} (${id.coinNameFa || 'نامشخص'})
 تاریخ: ${formatDateTimeFa(report.createdAt)}
-صرافی/پلتفرم: ${id.exchange} | تایم‌فریم: ${id.detectedTimeframe} | قیمت: ${id.currentPriceText}
+صرافی/پلتفرم: ${id.exchange || 'نامشخص'} | تایم‌فریم: ${id.detectedTimeframe || 'نامشخص'} | قیمت: ${id.currentPriceText || 'نامشخص'}
 
 ## تصمیم نهایی موتور ترکیبی (۴۵٪ تکنیکال / ۳۰٪ اخبار / ۲۵٪ بازار)
-- **تصمیم نهایی:** ${dec.finalDecision} (${dec.finalDecisionFa})
-- **سیگنال چارت:** ${dec.chartSignal} (${dec.chartSignalFa})
-- **امتیاز اطمینان تحلیلی:** ${dec.confidenceScore} از ۱۰۰
-- **احتمال سناریوی صعودی:** ${dec.bullishProbability}% | **احتمال سناریوی نزولی:** ${dec.bearishProbability}%
-- **امتیاز وزن‌دهی‌شده کل:** ${dec.weightedBreakdown.combinedScore} (تکنیکال: ${dec.weightedBreakdown.technicalScore} | اخبار: ${dec.weightedBreakdown.newsScore} | بازار: ${dec.weightedBreakdown.marketScore})
-- **تضاد بین ماژول‌ها:** ${dec.moduleDisagreements}
+- **تصمیم نهایی:** ${dec.finalDecision || 'NO TRADE'} (${dec.finalDecisionFa || 'عدم ورود'})
+- **سیگنال چارت:** ${dec.chartSignal || 'NO TRADE'} (${dec.chartSignalFa || 'عدم ورود'})
+- **امتیاز اطمینان تحلیلی:** ${dec.confidenceScore ?? 0} از ۱۰۰
+- **احتمال سناریوی صعودی:** ${dec.bullishProbability ?? 50}% | **احتمال سناریوی نزولی:** ${dec.bearishProbability ?? 50}%
+- **امتیاز وزن‌دهی‌شده کل:** ${wb.combinedScore} (تکنیکال: ${wb.technicalScore} | اخبار: ${wb.newsScore} | بازار: ${wb.marketScore})
+- **تضاد بین ماژول‌ها:** ${dec.moduleDisagreements || 'نامشخص'}
 
 ### دلایل تصمیم
-${dec.decisionReasons.map((r) => `- ${r}`).join('\n')}
+${(dec.decisionReasons || []).map((r) => `- ${r}`).join('\n')}
 
 ### شروط تایید (Confirmation)
-${dec.confirmationConditions.map((c) => `- ${c}`).join('\n')}
+${(dec.confirmationConditions || []).map((c) => `- ${c}`).join('\n')}
 
 ### شروط ابطال (Invalidation)
-${dec.invalidationConditions.map((c) => `- ${c}`).join('\n')}
+${(dec.invalidationConditions || []).map((c) => `- ${c}`).join('\n')}
 
 ## مدیریت ریسک و سطوح معاملاتی ${risk.isEstimated ? '(برآورد تحلیلی)' : ''}
-- **ناحیه ورود:** ${risk.entryZone}
-- **حد ضرر (SL):** ${risk.stopLoss}
-- **حد سود ۱ (TP1):** ${risk.takeProfit1}
-- **حد سود ۲ (TP2):** ${risk.takeProfit2}
-- **حد سود ۳ (TP3):** ${risk.takeProfit3}
-- **نسبت ریسک به ریوارد (R:R):** ${risk.riskRewardRatio}
-- **سطح ابطال تحلیل:** ${risk.invalidationLevel}
+- **ناحیه ورود:** ${risk.entryZone || 'نامشخص'}
+- **حد ضرر (SL):** ${risk.stopLoss || 'نامشخص'}
+- **حد سود ۱ (TP1):** ${risk.takeProfit1 || 'نامشخص'}
+- **حد سود ۲ (TP2):** ${risk.takeProfit2 || 'نامشخص'}
+- **حد سود ۳ (TP3):** ${risk.takeProfit3 || 'نامشخص'}
+- **نسبت ریسک به ریوارد (R:R):** ${risk.riskRewardRatio || 'نامشخص'}
+- **سطح ابطال تحلیل:** ${risk.invalidationLevel || 'نامشخص'}
 
 ## تحلیل تکنیکال
-- **روند کلی:** ${tech.overallTrend}
-- **ساختار بازار:** ${tech.marketStructure}
-- **حمایت‌ها:** ${tech.supportLevels.join(' ، ')}
-- **مقاومت‌ها:** ${tech.resistanceLevels.join(' ، ')}
+- **روند کلی:** ${tech.overallTrend || 'نامشخص'}
+- **ساختار بازار:** ${tech.marketStructure || 'نامشخص'}
+- **حمایت‌ها:** ${(tech.supportLevels || []).join(' ، ') || 'نامشخص'}
+- **مقاومت‌ها:** ${(tech.resistanceLevels || []).join(' ، ') || 'نامشخص'}
 - **RSI:** ${tech.rsi}
 - **MACD:** ${tech.macd}
 - **میانگین‌های متحرک (EMA):** ${tech.movingAverages}

@@ -20,10 +20,13 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
 }) => {
   const [search, setSearch] = useState('');
 
-  const filtered = entries.filter((e) =>
-    `${e.symbol} ${e.finalDecision} ${e.finalDecisionFa}`
-      .toLowerCase()
-      .includes(search.trim().toLowerCase())
+  const filtered = (entries || []).filter(
+    (e) =>
+      e &&
+      e.id &&
+      `${e.symbol || ''} ${e.finalDecision || ''} ${e.finalDecisionFa || ''}`
+        .toLowerCase()
+        .includes(search.trim().toLowerCase())
   );
 
   return (
@@ -87,7 +90,8 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((entry) => {
-            const style = getDecisionStyle(entry.finalDecision);
+            const safeDecision = entry.finalDecision || 'NO TRADE';
+            const style = getDecisionStyle(safeDecision);
             return (
               <div
                 key={entry.id}
@@ -110,20 +114,20 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                 <div className="p-4 flex-1 flex flex-col justify-between gap-3">
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between gap-2 text-xs text-slate-400">
-                      <span className="font-mono-num">{entry.timeframe}</span>
+                      <span className="font-mono-num">{entry.timeframe || 'نامشخص'}</span>
                       <span className="tabular-nums">{formatDateTimeFa(entry.createdAt)}</span>
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <h3 className="font-mono-num font-bold text-base text-slate-100">
-                        {entry.symbol}
+                        {entry.symbol || 'UNKNOWN'}
                       </h3>
                       <span className={`text-xs font-bold ${style.text}`}>
-                        {entry.finalDecision}
+                        {safeDecision}
                       </span>
                     </div>
                     <div className="text-xs text-slate-400 tabular-nums">
-                      اطمینان: {entry.confidenceScore}/100 · امتیاز کل:{' '}
-                      {entry.combinedScore > 0 ? `+${entry.combinedScore}` : entry.combinedScore}
+                      اطمینان: {entry.confidenceScore ?? 0}/100 · امتیاز کل:{' '}
+                      {(entry.combinedScore ?? 0) > 0 ? `+${entry.combinedScore}` : (entry.combinedScore ?? 0)}
                     </div>
                   </div>
 

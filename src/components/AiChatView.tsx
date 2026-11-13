@@ -84,8 +84,8 @@ export const AiChatView: React.FC<AiChatViewProps> = ({
             گفتگو با تحلیلگر هوشمند CRYPTO SCOPE AI
           </h1>
           <p className="text-xs text-slate-400 mt-0.5">
-            {report
-              ? `متصل به گزارش فعال: ${report.identification.symbol} (${report.identification.detectedTimeframe}) · تصمیم: ${report.decisionEngine.finalDecisionFa}`
+            {report?.identification && report?.decisionEngine
+              ? `متصل به گزارش فعال: ${report.identification.symbol || 'نامشخص'} (${report.identification.detectedTimeframe || 'نامشخص'}) · تصمیم: ${report.decisionEngine.finalDecisionFa || report.decisionEngine.finalDecision || 'نامشخص'}`
               : 'هنوز چارتی تحلیل نشده است — می‌توانید درباره وضعیت کلی بازار بپرسید یا ابتدا یک چارت تحلیل کنید.'}
           </p>
         </div>

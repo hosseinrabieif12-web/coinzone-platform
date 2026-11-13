@@ -642,26 +642,134 @@ Generate the complete, structured Persian trading decision report following the 
     },
   }));
 
-  const parsed = safeJsonParse<Omit<ChartAnalysisReport, 'id' | 'createdAt'>>(response.text);
+  const parsed = safeJsonParse<Partial<Omit<ChartAnalysisReport, 'id' | 'createdAt'>>>(response.text);
 
-  // Enforce deterministic 45/30/25 weights & bounds cleanly
-  const techScore = Math.max(-100, Math.min(100, Math.round(parsed.decisionEngine.weightedBreakdown.technicalScore)));
-  const newsScore = Math.max(-100, Math.min(100, Math.round(parsed.decisionEngine.weightedBreakdown.newsScore)));
-  const marketScore = Math.max(-100, Math.min(100, Math.round(parsed.decisionEngine.weightedBreakdown.marketScore)));
+  const rawDec = parsed?.decisionEngine;
+  const rawBreakdown = rawDec?.weightedBreakdown;
+  const techScore = Math.max(-100, Math.min(100, Math.round(Number(rawBreakdown?.technicalScore || 0))));
+  const newsScore = Math.max(-100, Math.min(100, Math.round(Number(rawBreakdown?.newsScore || 0))));
+  const marketScore = Math.max(-100, Math.min(100, Math.round(Number(rawBreakdown?.marketScore || 0))));
   const combinedScore = Math.round(techScore * 0.45 + newsScore * 0.30 + marketScore * 0.25);
 
-  parsed.decisionEngine.weightedBreakdown = {
-    technicalWeight: 45,
-    technicalScore: techScore,
-    newsWeight: 30,
-    newsScore,
-    marketWeight: 25,
-    marketScore,
-    combinedScore,
+  const normalizedReport: Omit<ChartAnalysisReport, 'id' | 'createdAt'> = {
+    identification: {
+      symbol: parsed?.identification?.symbol || quickId.symbol || 'UNKNOWN',
+      coinNameFa: parsed?.identification?.coinNameFa || 'نامشخص',
+      exchange: parsed?.identification?.exchange || quickId.exchange || 'نامشخص',
+      detectedTimeframe: parsed?.identification?.detectedTimeframe || quickId.detectedTimeframe || 'نامشخص',
+      currentPriceText: parsed?.identification?.currentPriceText || quickId.currentPriceText || 'نامشخص',
+      verifiedLivePriceUsd: parsed?.identification?.verifiedLivePriceUsd,
+      priceVerified: Boolean(parsed?.identification?.priceVerified),
+      visibleIndicators: Array.isArray(parsed?.identification?.visibleIndicators)
+        ? parsed.identification.visibleIndicators
+        : [],
+      needsUserInput: Boolean(parsed?.identification?.needsUserInput),
+      missingInfoQuestions: Array.isArray(parsed?.identification?.missingInfoQuestions)
+        ? parsed.identification.missingInfoQuestions
+        : [],
+      chartQualityNote: parsed?.identification?.chartQualityNote || '',
+    },
+    decisionEngine: {
+      finalDecision: rawDec?.finalDecision || 'NO TRADE',
+      finalDecisionFa: rawDec?.finalDecisionFa || 'عدم ورود به معامله',
+      chartSignal: rawDec?.chartSignal || 'NO TRADE',
+      chartSignalFa: rawDec?.chartSignalFa || 'عدم ورود',
+      confidenceScore: Number(rawDec?.confidenceScore ?? 0),
+      bullishProbability: Number(rawDec?.bullishProbability ?? 50),
+      bearishProbability: Number(rawDec?.bearishProbability ?? 50),
+      weightedBreakdown: {
+        technicalWeight: 45,
+        technicalScore: techScore,
+        newsWeight: 30,
+        newsScore,
+        marketWeight: 25,
+        marketScore,
+        combinedScore,
+      },
+      moduleDisagreements: rawDec?.moduleDisagreements || 'تضاد عمده‌ای گزارش نشده است.',
+      decisionReasons: Array.isArray(rawDec?.decisionReasons) ? rawDec.decisionReasons : [],
+      confirmationConditions: Array.isArray(rawDec?.confirmationConditions)
+        ? rawDec.confirmationConditions
+        : [],
+      invalidationConditions: Array.isArray(rawDec?.invalidationConditions)
+        ? rawDec.invalidationConditions
+        : [],
+      riskDisclaimer:
+        rawDec?.riskDisclaimer ||
+        'این تحلیل صرفاً جنبه آموزشی و تحلیلی دارد و به هیچ عنوان تضمین سود یا توصیه قطعی سرمایه‌گذاری نیست.',
+    },
+    riskManagement: parsed?.riskManagement || {
+      hasSufficientPriceData: false,
+      isEstimated: true,
+      estimationNote: 'اطلاعات قیمتی کافی برای محاسبه دقیق سطوح دریافت نشد.',
+      entryZone: 'نامشخص',
+      stopLoss: 'نامشخص',
+      takeProfit1: 'نامشخص',
+      takeProfit2: 'نامشخص',
+      takeProfit3: 'نامشخص',
+      riskRewardRatio: 'نامشخص',
+      invalidationLevel: 'نامشخص',
+    },
+    technicalAnalysis: parsed?.technicalAnalysis || {
+      overallTrend: 'نامشخص',
+      marketStructure: 'نامشخص',
+      supportLevels: [],
+      resistanceLevels: [],
+      rsi: 'در تصویر چارت نمایش داده نشده است.',
+      macd: 'در تصویر چارت نمایش داده نشده است.',
+      movingAverages: 'در تصویر چارت نمایش داده نشده است.',
+      bollingerBands: 'در تصویر چارت نمایش داده نشده است.',
+      volumeAnalysis: 'در تصویر چارت نمایش داده نشده است.',
+      candlestickPatterns: 'نامشخص',
+      chartPatterns: 'نامشخص',
+      breakoutPossibilities: 'نامشخص',
+      divergences: 'نامشخص',
+      fibonacciRetracement: 'نامشخص',
+      priceAction: 'نامشخص',
+      liquidityZones: 'نامشخص',
+      momentum: 'نامشخص',
+      bullishFactors: [],
+      bearishFactors: [],
+    },
+    multiTimeframe: Array.isArray(parsed?.multiTimeframe) ? parsed.multiTimeframe : [],
+    newsAndFundamental: {
+      impactScore: Number(parsed?.newsAndFundamental?.impactScore ?? 0),
+      last24hSummary: parsed?.newsAndFundamental?.last24hSummary || 'اطلاعاتی ثبت نشد.',
+      last7dSummary: parsed?.newsAndFundamental?.last7dSummary || 'اطلاعاتی ثبت نشد.',
+      last30dSummary: parsed?.newsAndFundamental?.last30dSummary || 'اطلاعاتی ثبت نشد.',
+      positiveNewsImpact: parsed?.newsAndFundamental?.positiveNewsImpact || 'نامشخص',
+      negativeNewsImpact: parsed?.newsAndFundamental?.negativeNewsImpact || 'نامشخص',
+      neutralNewsImpact: parsed?.newsAndFundamental?.neutralNewsImpact || 'نامشخص',
+      partnershipsAndUpdates: parsed?.newsAndFundamental?.partnershipsAndUpdates || 'نامشخص',
+      listingsAndDelistings: parsed?.newsAndFundamental?.listingsAndDelistings || 'نامشخص',
+      regulatoryDevelopments: parsed?.newsAndFundamental?.regulatoryDevelopments || 'نامشخص',
+      securityIncidents: parsed?.newsAndFundamental?.securityIncidents || 'نامشخص',
+      tokenUnlocksAndSupply: parsed?.newsAndFundamental?.tokenUnlocksAndSupply || 'نامشخص',
+      institutionalAndEtf: parsed?.newsAndFundamental?.institutionalAndEtf || 'نامشخص',
+      rumorsVsVerified: parsed?.newsAndFundamental?.rumorsVsVerified || 'نامشخص',
+      shortTermImpact: parsed?.newsAndFundamental?.shortTermImpact || 'نامشخص',
+      longTermImpact: parsed?.newsAndFundamental?.longTermImpact || 'نامشخص',
+      items: Array.isArray(parsed?.newsAndFundamental?.items) ? parsed.newsAndFundamental.items : [],
+    },
+    marketConditions: parsed?.marketConditions || {
+      overallMarketTrend: 'نامشخص',
+      btcDirectionAndAltcoinImpact: 'نامشخص',
+      ethTrend: 'نامشخص',
+      btcDominanceAnalysis: 'نامشخص',
+      totalMarketCapAnalysis: 'نامشخص',
+      fearAndGreedAnalysis: 'نامشخص',
+      marketVolatilityAndVolume: 'نامشخص',
+      stablecoinMovements: 'نامشخص',
+      altcoinStrength: 'نامشخص',
+      liquidationsFundingOi: 'نامشخص',
+      macroAndFedEvents: 'نامشخص',
+      inflationAndEmployment: 'نامشخص',
+      geopoliticalRisks: 'نامشخص',
+    },
   };
 
   return {
-    ...parsed,
+    ...normalizedReport,
     id: `cs_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
     createdAt: new Date().toISOString(),
     liveSnapshotUsed: {

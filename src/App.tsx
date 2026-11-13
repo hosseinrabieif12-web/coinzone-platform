@@ -33,6 +33,7 @@ function loadSavedHistory(): AnalysisHistoryEntry[] {
         item.report &&
         item.report.identification &&
         item.report.decisionEngine &&
+        typeof item.report.decisionEngine.finalDecision === 'string' &&
         item.report.decisionEngine.weightedBreakdown &&
         item.report.technicalAnalysis &&
         item.report.riskManagement
@@ -168,6 +169,17 @@ export default function App() {
         }),
       });
       const report = await readApiJson<ChartAnalysisReport>(res, 'خطا در تحلیل چارت');
+      if (
+        !report ||
+        !report.identification ||
+        !report.decisionEngine ||
+        !report.decisionEngine.finalDecision ||
+        !report.decisionEngine.weightedBreakdown ||
+        !report.technicalAnalysis ||
+        !report.riskManagement
+      ) {
+        throw new Error('ساختار گزارش دریافتی از سرور کامل نبود. لطفاً دوباره تلاش کنید.');
+      }
       setCurrentReport(report);
 
       // Update news asset if identified cleanly
@@ -237,6 +249,11 @@ export default function App() {
   };
 
   const handleLoadHistoryEntry = (entry: AnalysisHistoryEntry) => {
+    if (!entry?.report?.identification || !entry?.report?.decisionEngine?.finalDecision) {
+      setAnalysisError('این مورد تاریخچه قدیمی یا ناقص است و قابل بارگذاری نیست.');
+      setActiveTab('analyze');
+      return;
+    }
     setCurrentReport(entry.report);
     setChatMessages([]);
     setActiveTab('analyze');
