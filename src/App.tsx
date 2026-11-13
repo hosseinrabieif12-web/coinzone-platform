@@ -24,7 +24,18 @@ function loadSavedHistory(): AnalysisHistoryEntry[] {
     const raw = localStorage.getItem(HISTORY_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter(
+      (item) =>
+        item &&
+        typeof item.id === 'string' &&
+        item.report &&
+        item.report.identification &&
+        item.report.decisionEngine &&
+        item.report.decisionEngine.weightedBreakdown &&
+        item.report.technicalAnalysis &&
+        item.report.riskManagement
+    );
   } catch {
     return [];
   }
@@ -74,6 +85,9 @@ export default function App() {
     try {
       const res = await fetch(`/api/market/global${force ? '?refresh=1' : ''}`);
       const data = await readApiJson<GlobalMarketData>(res, 'خطا در دریافت داده‌های بازار');
+      if (!data || !data.btc || !data.eth || !data.global || !data.fearAndGreed) {
+        throw new Error('پاسخ سرویس بازار ناقص است؛ در حال استفاده از حالت آفلاین.');
+      }
       setGlobalMarket(data);
     } catch (err) {
       setMarketError(err instanceof Error ? err.message : 'خطا در اتصال به سرور');

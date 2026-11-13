@@ -22,7 +22,7 @@ export const MarketStrip: React.FC<MarketStripProps> = ({
   onRefresh,
 }) => {
   const unavailableSources =
-    data?.sources.filter((s) => s.status === 'unavailable') || [];
+    data?.sources?.filter((s) => s.status === 'unavailable') || [];
 
   return (
     <section className="bg-[#0B1120] border-b border-slate-800/80 no-print">
@@ -54,7 +54,7 @@ export const MarketStrip: React.FC<MarketStripProps> = ({
               {/* BTC */}
               <div className="flex items-center gap-2">
                 <span className="text-slate-400 font-medium">BTC:</span>
-                {data.btc.available ? (
+                {data.btc?.available ? (
                   <>
                     <span className="font-mono-num text-slate-100 font-semibold">
                       {formatUsd(data.btc.priceUsd)}
@@ -81,7 +81,7 @@ export const MarketStrip: React.FC<MarketStripProps> = ({
               {/* ETH */}
               <div className="flex items-center gap-2">
                 <span className="text-slate-400 font-medium">ETH:</span>
-                {data.eth.available ? (
+                {data.eth?.available ? (
                   <>
                     <span className="font-mono-num text-slate-100 font-semibold">
                       {formatUsd(data.eth.priceUsd)}
@@ -108,7 +108,9 @@ export const MarketStrip: React.FC<MarketStripProps> = ({
               {/* BTC.D */}
               <div className="flex items-center gap-2">
                 <span className="text-slate-400 font-medium">BTC.D:</span>
-                {data.global.available && data.global.btcDominance !== undefined ? (
+                {data.global?.available &&
+                typeof data.global?.btcDominance === 'number' &&
+                Number.isFinite(data.global.btcDominance) ? (
                   <span className="font-mono-num text-slate-200 font-semibold">
                     {data.global.btcDominance.toFixed(2)}%
                   </span>
@@ -124,7 +126,7 @@ export const MarketStrip: React.FC<MarketStripProps> = ({
               {/* Total Market Cap */}
               <div className="hidden lg:flex items-center gap-2">
                 <span className="text-slate-400 font-medium">ارزش کل بازار:</span>
-                {data.global.available ? (
+                {data.global?.available ? (
                   <span className="font-mono-num text-slate-200 font-semibold">
                     {formatCompactUsd(data.global.totalMarketCapUsd)}
                   </span>
@@ -140,18 +142,20 @@ export const MarketStrip: React.FC<MarketStripProps> = ({
               {/* Fear & Greed */}
               <div className="flex items-center gap-2">
                 <span className="text-slate-400 font-medium">شاخص ترس و طمع:</span>
-                {data.fearAndGreed.available ? (
+                {data.fearAndGreed?.available &&
+                typeof data.fearAndGreed?.value === 'number' &&
+                Number.isFinite(data.fearAndGreed.value) ? (
                   <span
                     className={`font-semibold ${
-                      (data.fearAndGreed.value || 50) >= 60
+                      data.fearAndGreed.value >= 60
                         ? 'text-emerald-400'
-                        : (data.fearAndGreed.value || 50) <= 40
+                        : data.fearAndGreed.value <= 40
                           ? 'text-rose-400'
                           : 'text-amber-400'
                     }`}
                   >
                     <span className="font-mono-num">{data.fearAndGreed.value}</span>{' '}
-                    ({data.fearAndGreed.classificationFa})
+                    ({data.fearAndGreed.classificationFa || 'نامشخص'})
                   </span>
                 ) : (
                   <span className="text-amber-400">ناموجود</span>

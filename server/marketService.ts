@@ -31,14 +31,32 @@ function fearGreedClassificationFa(cls?: string): string {
   return cls;
 }
 
+async function fetchWithTimeout(
+  url: string,
+  headers: Record<string, string>,
+  timeoutMs = 6500
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, {
+      headers,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function fetchJsonWithTimeout<T>(url: string, timeoutMs = 6500): Promise<T> {
-  const res = await fetch(url, {
-    headers: {
+  const res = await fetchWithTimeout(
+    url,
+    {
       Accept: 'application/json',
       'User-Agent': 'CryptoScopeAI/1.0',
     },
-    signal: AbortSignal.timeout(timeoutMs),
-  });
+    timeoutMs
+  );
   if (!res.ok) {
     throw new Error(`HTTP ${res.status}`);
   }
@@ -46,13 +64,14 @@ async function fetchJsonWithTimeout<T>(url: string, timeoutMs = 6500): Promise<T
 }
 
 async function fetchTextWithTimeout(url: string, timeoutMs = 6500): Promise<string> {
-  const res = await fetch(url, {
-    headers: {
+  const res = await fetchWithTimeout(
+    url,
+    {
       Accept: 'application/xml, application/rss+xml, text/xml, */*',
       'User-Agent': 'CryptoScopeAI/1.0',
     },
-    signal: AbortSignal.timeout(timeoutMs),
-  });
+    timeoutMs
+  );
   if (!res.ok) {
     throw new Error(`HTTP ${res.status}`);
   }
@@ -115,16 +134,25 @@ export async function fetchGlobalMarketData(forceRefresh = false): Promise<Globa
     }
   }
 
+  const toFiniteNum = (v: unknown): number | undefined => {
+    if (typeof v === 'number') return Number.isFinite(v) ? v : undefined;
+    if (typeof v === 'string' && v.trim() !== '') {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : undefined;
+    }
+    return undefined;
+  };
+
   if (coingeckoGlobalRes.status === 'fulfilled' && coingeckoGlobalRes.value?.data) {
     const d = coingeckoGlobalRes.value.data;
     globalOk = true;
     globalSection = {
       available: true,
-      totalMarketCapUsd: d.total_market_cap?.usd,
-      totalMarketCapChange24h: d.market_cap_change_percentage_24h_usd,
-      totalVolume24hUsd: d.total_volume?.usd,
-      btcDominance: d.market_cap_percentage?.btc,
-      ethDominance: d.market_cap_percentage?.eth,
+      totalMarketCapUsd: toFiniteNum(d.total_market_cap?.usd),
+      totalMarketCapChange24h: toFiniteNum(d.market_cap_change_percentage_24h_usd),
+      totalVolume24hUsd: toFiniteNum(d.total_volume?.usd),
+      btcDominance: toFiniteNum(d.market_cap_percentage?.btc),
+      ethDominance: toFiniteNum(d.market_cap_percentage?.eth),
       stablecoinMarketCapUsd: stablecoinCap > 0 ? stablecoinCap : undefined,
       stablecoinChange24h:
         stablecoinCount > 0 ? Number((stablecoinChangeSum / stablecoinCount).toFixed(2)) : undefined,
@@ -161,39 +189,44 @@ export async function fetchGlobalMarketData(forceRefresh = false): Promise<Globa
     lastUpdated: timestamp,
   });
 
-  const btcPrice = btcBinance ? Number(btcBinance.lastPrice) : cgBtc?.current_price;
+  const btcPrice = toFiniteNum(btcBinance?.lastPrice) ?? toFiniteNum(cgBtc?.current_price);
+  const btcFundingRateRaw = toFiniteNum(btcFunding?.lastFundingRate);
+  const btcOiRaw = toFiniteNum(btcOi?.openInterest);
   const btcData: GlobalMarketData['btc'] =
-    typeof btcPrice === 'number' && !Number.isNaN(btcPrice)
+    btcPrice !== undefined
       ? {
           available: true,
           priceUsd: btcPrice,
           change24h: btcBinance
-            ? Number(btcBinance.priceChangePercent)
-            : cgBtc?.price_change_percentage_24h,
-          high24h: btcBinance ? Number(btcBinance.highPrice) : cgBtc?.high_24h,
-          low24h: btcBinance ? Number(btcBinance.lowPrice) : cgBtc?.low_24h,
-          volume24hUsd: btcBinance ? Number(btcBinance.quoteVolume) : cgBtc?.total_volume,
-          fundingRate: btcFunding?.lastFundingRate ? Number(btcFunding.lastFundingRate) * 100 : undefined,
-          openInterestUsd:
-            btcOi?.openInterest && btcPrice ? Number(btcOi.openInterest) * btcPrice : undefined,
+            ? toFiniteNum(btcBinance.priceChangePercent)
+            : toFiniteNum(cgBtc?.price_change_percentage_24h),
+          high24h: btcBinance ? toFiniteNum(btcBinance.highPrice) : toFiniteNum(cgBtc?.high_24h),
+          low24h: btcBinance ? toFiniteNum(btcBinance.lowPrice) : toFiniteNum(cgBtc?.low_24h),
+          volume24hUsd: btcBinance
+            ? toFiniteNum(btcBinance.quoteVolume)
+            : toFiniteNum(cgBtc?.total_volume),
+          fundingRate: btcFundingRateRaw !== undefined ? btcFundingRateRaw * 100 : undefined,
+          openInterestUsd: btcOiRaw !== undefined ? btcOiRaw * btcPrice : undefined,
         }
       : {
           available: false,
           error: 'قیمت لحظه‌ای بیت‌کوین در دسترس نیست',
         };
 
-  const ethPrice = ethBinance ? Number(ethBinance.lastPrice) : cgEth?.current_price;
+  const ethPrice = toFiniteNum(ethBinance?.lastPrice) ?? toFiniteNum(cgEth?.current_price);
   const ethData: GlobalMarketData['eth'] =
-    typeof ethPrice === 'number' && !Number.isNaN(ethPrice)
+    ethPrice !== undefined
       ? {
           available: true,
           priceUsd: ethPrice,
           change24h: ethBinance
-            ? Number(ethBinance.priceChangePercent)
-            : cgEth?.price_change_percentage_24h,
-          high24h: ethBinance ? Number(ethBinance.highPrice) : cgEth?.high_24h,
-          low24h: ethBinance ? Number(ethBinance.lowPrice) : cgEth?.low_24h,
-          volume24hUsd: ethBinance ? Number(ethBinance.quoteVolume) : cgEth?.total_volume,
+            ? toFiniteNum(ethBinance.priceChangePercent)
+            : toFiniteNum(cgEth?.price_change_percentage_24h),
+          high24h: ethBinance ? toFiniteNum(ethBinance.highPrice) : toFiniteNum(cgEth?.high_24h),
+          low24h: ethBinance ? toFiniteNum(ethBinance.lowPrice) : toFiniteNum(cgEth?.low_24h),
+          volume24hUsd: ethBinance
+            ? toFiniteNum(ethBinance.quoteVolume)
+            : toFiniteNum(cgEth?.total_volume),
         }
       : {
           available: false,

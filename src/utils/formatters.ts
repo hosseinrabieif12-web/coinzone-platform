@@ -6,10 +6,13 @@ export async function readApiJson<T = any>(res: Response, fallbackError: string)
   try {
     parsed = text ? JSON.parse(text) : null;
   } catch {
+    const looksLikeHtml = text.trim().toLowerCase().startsWith('<!doctype') || text.trim().toLowerCase().startsWith('<html');
     throw new Error(
-      res.ok
-        ? 'پاسخ سرور ساختار معتبر JSON نداشت.'
-        : `${fallbackError} (کد وضعیت ${res.status})`
+      looksLikeHtml
+        ? 'سرویس API سرور پاسخ JSON نداد (در کلودفلر مطمئن شوید پوشه functions و خروجی dist از طریق Connect to Git دیپلوی شده‌اند).'
+        : res.ok
+          ? 'پاسخ سرور ساختار معتبر JSON نداشت.'
+          : `${fallbackError} (کد وضعیت ${res.status})`
     );
   }
   if (!res.ok) {
@@ -19,7 +22,7 @@ export async function readApiJson<T = any>(res: Response, fallbackError: string)
 }
 
 export function formatUsd(val?: number | null): string {
-  if (val === undefined || val === null || Number.isNaN(val)) return 'نامشخص';
+  if (typeof val !== 'number' || !Number.isFinite(val)) return 'نامشخص';
   if (val >= 1000) {
     return `$${val.toLocaleString('en-US', { maximumFractionDigits: 2 })}`;
   }
@@ -30,7 +33,7 @@ export function formatUsd(val?: number | null): string {
 }
 
 export function formatCompactUsd(val?: number | null): string {
-  if (val === undefined || val === null || Number.isNaN(val)) return 'نامشخص';
+  if (typeof val !== 'number' || !Number.isFinite(val)) return 'نامشخص';
   if (val >= 1e12) return `$${(val / 1e12).toFixed(2)}T`;
   if (val >= 1e9) return `$${(val / 1e9).toFixed(2)}B`;
   if (val >= 1e6) return `$${(val / 1e6).toFixed(2)}M`;
@@ -38,7 +41,7 @@ export function formatCompactUsd(val?: number | null): string {
 }
 
 export function formatPercent(val?: number | null): string {
-  if (val === undefined || val === null || Number.isNaN(val)) return 'نامشخص';
+  if (typeof val !== 'number' || !Number.isFinite(val)) return 'نامشخص';
   const sign = val > 0 ? '+' : '';
   return `${sign}${val.toFixed(2)}%`;
 }

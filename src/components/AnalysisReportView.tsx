@@ -89,7 +89,7 @@ export const AnalysisReportView: React.FC<AnalysisReportViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Clarification Prompt if Screenshot Lacks Symbol/Timeframe/Price */}
-      {id.needsUserInput && id.missingInfoQuestions.length > 0 && (
+      {id?.needsUserInput && (id.missingInfoQuestions || []).length > 0 && (
         <div className="bg-amber-500/10 border border-amber-500/35 rounded-xl p-5 space-y-4">
           <div className="flex items-start gap-3">
             <HelpCircle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
@@ -98,7 +98,7 @@ export const AnalysisReportView: React.FC<AnalysisReportViewProps> = ({
                 برخی اطلاعات کلیدی در تصویر چارت واضح نبود — لطفاً مشخص کنید
               </h3>
               <ul className="list-disc list-inside text-xs text-amber-200/90 space-y-1">
-                {id.missingInfoQuestions.map((q, i) => (
+                {(id.missingInfoQuestions || []).map((q, i) => (
                   <li key={i}>{q}</li>
                 ))}
               </ul>
@@ -183,13 +183,13 @@ export const AnalysisReportView: React.FC<AnalysisReportViewProps> = ({
                   </span>
                 </>
               )}
-              {id.visibleIndicators.length > 0 && (
+              {(id.visibleIndicators || []).length > 0 && (
                 <>
                   <span className="text-slate-600" aria-hidden="true">
                     ·
                   </span>
                   <span className="text-slate-400">
-                    اندیکاتورهای مشاهده‌شده: {id.visibleIndicators.join('، ')}
+                    اندیکاتورهای مشاهده‌شده: {(id.visibleIndicators || []).join('، ')}
                   </span>
                 </>
               )}
@@ -495,7 +495,7 @@ export const AnalysisReportView: React.FC<AnalysisReportViewProps> = ({
                 دلایل اصلی تصمیم
               </h4>
               <ul className="space-y-2 text-xs text-slate-300 leading-relaxed list-disc list-inside">
-                {dec.decisionReasons.map((item, idx) => (
+                {(dec.decisionReasons || []).map((item, idx) => (
                   <li key={idx}>{item}</li>
                 ))}
               </ul>
@@ -507,7 +507,7 @@ export const AnalysisReportView: React.FC<AnalysisReportViewProps> = ({
                 <span>شروط تایید سناریو</span>
               </h4>
               <ul className="space-y-2 text-xs text-slate-300 leading-relaxed list-disc list-inside">
-                {dec.confirmationConditions.map((item, idx) => (
+                {(dec.confirmationConditions || []).map((item, idx) => (
                   <li key={idx}>{item}</li>
                 ))}
               </ul>
@@ -519,7 +519,7 @@ export const AnalysisReportView: React.FC<AnalysisReportViewProps> = ({
                 <span>شروط ابطال تحلیل</span>
               </h4>
               <ul className="space-y-2 text-xs text-slate-300 leading-relaxed list-disc list-inside">
-                {dec.invalidationConditions.map((item, idx) => (
+                {(dec.invalidationConditions || []).map((item, idx) => (
                   <li key={idx}>{item}</li>
                 ))}
               </ul>
@@ -538,7 +538,7 @@ export const AnalysisReportView: React.FC<AnalysisReportViewProps> = ({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-              {multiTimeframe.map((tf) => (
+              {(multiTimeframe || []).map((tf) => (
                 <div
                   key={tf.timeframe}
                   className={`p-3.5 rounded-lg border text-xs space-y-2 ${
@@ -582,7 +582,7 @@ export const AnalysisReportView: React.FC<AnalysisReportViewProps> = ({
                 <span>عوامل صعودی (Bullish Factors)</span>
               </h4>
               <ul className="space-y-2 text-xs text-slate-300 leading-relaxed list-disc list-inside">
-                {tech.bullishFactors.map((f, i) => (
+                {(tech.bullishFactors || []).map((f, i) => (
                   <li key={i}>{f}</li>
                 ))}
               </ul>
@@ -594,7 +594,7 @@ export const AnalysisReportView: React.FC<AnalysisReportViewProps> = ({
                 <span>عوامل نزولی (Bearish Factors)</span>
               </h4>
               <ul className="space-y-2 text-xs text-slate-300 leading-relaxed list-disc list-inside">
-                {tech.bearishFactors.map((f, i) => (
+                {(tech.bearishFactors || []).map((f, i) => (
                   <li key={i}>{f}</li>
                 ))}
               </ul>
@@ -609,8 +609,8 @@ export const AnalysisReportView: React.FC<AnalysisReportViewProps> = ({
               {[
                 { label: 'روند کلی (Overall Trend)', val: tech.overallTrend },
                 { label: 'ساختار بازار (Market Structure)', val: tech.marketStructure },
-                { label: 'حمایت‌های کلیدی (Support)', val: tech.supportLevels.join(' ، ') || 'نامشخص' },
-                { label: 'مقاومت‌های کلیدی (Resistance)', val: tech.resistanceLevels.join(' ، ') || 'نامشخص' },
+                { label: 'حمایت‌های کلیدی (Support)', val: (tech.supportLevels || []).join(' ، ') || 'نامشخص' },
+                { label: 'مقاومت‌های کلیدی (Resistance)', val: (tech.resistanceLevels || []).join(' ، ') || 'نامشخص' },
                 { label: 'شاخص RSI', val: tech.rsi },
                 { label: 'اندیکاتور MACD', val: tech.macd },
                 { label: 'میانگین‌های متحرک (EMA 20 / 50 / 100 / 200)', val: tech.movingAverages },
@@ -705,13 +705,13 @@ export const AnalysisReportView: React.FC<AnalysisReportViewProps> = ({
           </div>
 
           {/* Itemized News Cards */}
-          {news.items.length > 0 && (
+          {(news.items || []).length > 0 && (
             <div className="bg-[#0B1120] border border-slate-800/90 rounded-xl p-5 sm:p-6 space-y-4">
               <h4 className="text-sm font-bold text-slate-100">
                 اخبار بررسی‌شده مرتبط
               </h4>
               <div className="divide-y divide-slate-800/80">
-                {news.items.map((item, idx) => (
+                {(news.items || []).map((item, idx) => (
                   <div key={`${item.id}-${idx}`} className="py-4 first:pt-0 last:pb-0 space-y-2">
                     <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
                       <div className="flex flex-wrap items-center gap-2">

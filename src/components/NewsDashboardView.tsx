@@ -46,7 +46,7 @@ export const NewsDashboardView: React.FC<NewsDashboardViewProps> = ({
   };
 
   const filteredNews =
-    data?.latestNews.filter((item) => {
+    data?.latestNews?.filter((item) => {
       if (filter === 'all') return true;
       if (filter === 'positive') return item.sentiment === 'positive';
       if (filter === 'negative') return item.sentiment === 'negative';
@@ -211,7 +211,7 @@ export const NewsDashboardView: React.FC<NewsDashboardViewProps> = ({
               <div className="text-xs font-semibold text-blue-400">
                 وضعیت بیت‌کوین و دامیننس
               </div>
-              {globalMarket?.btc.available ? (
+              {globalMarket?.btc?.available ? (
                 <div className="flex items-baseline gap-2">
                   <span className="font-mono-num font-bold text-lg text-slate-100">
                     {formatUsd(globalMarket.btc.priceUsd)}
@@ -236,7 +236,7 @@ export const NewsDashboardView: React.FC<NewsDashboardViewProps> = ({
               <div className="text-xs font-semibold text-purple-400">
                 احساسات کلی بازار
               </div>
-              {globalMarket?.fearAndGreed.available && (
+              {globalMarket?.fearAndGreed?.available && (
                 <div className="text-sm font-bold text-slate-100">
                   <span className="font-mono-num">{globalMarket.fearAndGreed.value}</span>{' '}
                   ({globalMarket.fearAndGreed.classificationFa})
@@ -265,7 +265,7 @@ export const NewsDashboardView: React.FC<NewsDashboardViewProps> = ({
                 <span>مهم‌ترین اخبار مثبت</span>
               </h2>
               <div className="divide-y divide-slate-800/70">
-                {data.topPositiveNews.length === 0 ? (
+                {!data.topPositiveNews || data.topPositiveNews.length === 0 ? (
                   <p className="text-xs text-slate-400 py-3">خبر مثبت شاخصی در این بازه ثبت نشد.</p>
                 ) : (
                   data.topPositiveNews.map((item, idx) => (
@@ -292,7 +292,7 @@ export const NewsDashboardView: React.FC<NewsDashboardViewProps> = ({
                 <span>مهم‌ترین اخبار منفی و ریسک‌ها</span>
               </h2>
               <div className="divide-y divide-slate-800/70">
-                {data.topNegativeNews.length === 0 ? (
+                {!data.topNegativeNews || data.topNegativeNews.length === 0 ? (
                   <p className="text-xs text-slate-400 py-3">خبر منفی بحرانی در این بازه ثبت نشد.</p>
                 ) : (
                   data.topNegativeNews.map((item, idx) => (
@@ -321,7 +321,7 @@ export const NewsDashboardView: React.FC<NewsDashboardViewProps> = ({
               <span>رویدادهای اقتصادی و کلان پیش رو (فدرال رزرو، تورم، اشتغال)</span>
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {data.upcomingEconomicEvents.map((ev, idx) => (
+              {(data.upcomingEconomicEvents || []).map((ev, idx) => (
                 <div
                   key={idx}
                   className="p-4 rounded-lg bg-[#070b17] border border-slate-800/80 space-y-2 text-xs"
